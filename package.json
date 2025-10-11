@@ -1,0 +1,22 @@
+{
+    "name": "scryfall-search-assist",
+    "version": "1.0.0",
+    "description": "",
+    "main": "index.js",
+    "scripts": {
+        "test": "echo \"Error: no test specified\" && exit 1",
+        "dev": "vite",
+        "build": "tsc --noEmit && vite build"
+    },
+    "keywords": [],
+    "author": "",
+    "license": "ISC",
+    "type": "commonjs",
+    "devDependencies": {
+        "@types/chrome": "^0.1.22",
+        "@types/firefox-webext-browser": "^120.0.5",
+        "@types/node": "^24.7.1",
+        "typescript": "^5.9.3",
+        "vite": "^7.1.9"
+    }
+}
