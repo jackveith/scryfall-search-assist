@@ -1,11 +1,8 @@
 
 import popupmenu_template_html from '../../assets/components/popupmenu_template.html?raw';
 import popupmenu_template_css from '../../assets/components/popupmenu_template.css?inline';
-import { wrap } from 'module';
 
 //POPUPMENU Management interface/class definitions and implementations
-
-
 
 interface PopupmenuConfig {
 
@@ -21,6 +18,7 @@ class PopupmenuManager {
 
     constructor() {
         this.initTemplate();
+        //TODO: remember previous visibility state and show accordingly
         this.show();
     }
 
@@ -43,8 +41,6 @@ class PopupmenuManager {
         document.body.appendChild(wrapper_shadow);
 
     }
-
-    //TODO: make everything else async for speedup(?) but this must be after DOM load
 
     public show(): void {
         //build popupmenu html element (with config options in future)
@@ -86,6 +82,10 @@ class PopupmenuManager {
         console.log(this.shadow);
     }
 
+    public getShadowRoot() {
+        return this.shadow;
+    }
+
 }
 //END PopupmenuManager class dfn
 
@@ -93,18 +93,6 @@ class PopupmenuManager {
 
 //init popup
 let manager = new PopupmenuManager();
-console.log(`popupmanager: ${manager}`);
-
-
-
-async function injectUI() {
-    await injectSearchbarMenu();
-    console.log("searchbar injection finished.")
-}
-
-
-
-
 
 //TODO: save the element itself or figure out some sort of way to persist across
 //searches and page loads/reloads
@@ -124,19 +112,20 @@ async function injectSearchbarMenu() {
     const menu_link = document.createElement('a');
     menu_link.className = "header-link";
     menu_link.style.setProperty('background-color', '#F77C34');
-    menu_link.id = "SSA-main-container-link";
+    menu_link.id = "ssa-main-container-link";
     menu_link.addEventListener('click', (event) => {
         event.preventDefault();
         console.log("menu button pressed.");
-        manager?.printattributes();
+        //manager?.printattributes();
         manager?.toggleVisibility();
+        updatePopupmenuPosition();
     });
 
     //MENU SVG ICON
     const menu_icon = document.createElementNS("http://www.w3.org/2000/svg", 'svg');
     //fetch SVG data from file and insert into new SVG
     //TODO: browser.runtime.getURL is firefox specific, generalize with polyfills or smth
-    //(maybe DEFINE them as constants in a file at root, so other mods can share them?):W
+    //(maybe DEFINE them as constants in a file at root, so other mods can share them?)
     const icon_url = browser.runtime.getURL('assets/icons/soul-icon.svg');
     const icon_svg_file = await fetch(icon_url);
     const icon_svg_filetext = await icon_svg_file.text();
@@ -171,6 +160,32 @@ async function injectSearchbarMenu() {
     (links_divider_left as HTMLElement).style.setProperty('margin-left', '6px');
 
 }
+
+function updatePopupmenuPosition() {
+    const ref = document.getElementById('ssa-main-container-link');
+    const popup = manager.getShadowRoot()?.getElementById('ssa-popupmenu-wrapper');
+
+    if (popup && ref) {
+        const rect = ref?.getBoundingClientRect();
+        popup.style.position = 'absolute';
+        popup.style.left = `${(rect.left - 40)}px`;
+        popup.style.top = `${(rect.bottom + 4)}px`;
+    }
+}
+
+//TODO: custom keyboard shortcuts
+function attachWindowEvents() {
+    updatePopupmenuPosition();
+    window.addEventListener('scroll', updatePopupmenuPosition);
+    window.addEventListener('resize', updatePopupmenuPosition);
+
+}
+
+async function injectUI() {
+    await injectSearchbarMenu();
+    attachWindowEvents();
+}
+
 
 if (document.readyState === 'complete') injectUI();
 else window.addEventListener('load', injectUI);
