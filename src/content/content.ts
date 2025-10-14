@@ -113,6 +113,7 @@ async function injectSearchbarMenu() {
     menu_link.className = "header-link";
     menu_link.style.setProperty('background-color', '#F77C34');
     menu_link.id = "ssa-main-container-link";
+    //toggle popup visibility
     menu_link.addEventListener('click', (event) => {
         event.preventDefault();
         console.log("menu button pressed.");
