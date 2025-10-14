@@ -16,7 +16,8 @@
         "types": [
             "firefox-webext-browser",
             "chrome",
-            "node"
+            "node",
+            "vite/client"
         ],
         // For nodejs:
         // "lib": ["esnext"],
@@ -43,6 +44,6 @@
         "skipLibCheck": true,
     },
     "include": [
-        "src/**/*"
+        "src/**/*",
     ]
 }
