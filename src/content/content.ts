@@ -116,9 +116,6 @@ class PopupmenuManager {
 
     private populatePopupShell(shell: HTMLDivElement) {
         const tab_buttons = shell.getElementsByClassName('popup-subtab-selector-btn');
-        console.log(tab_buttons);
-        console.log(tab_buttons[this.active_tab]);
-        console.log(this.active_tab);
 
         if (tab_buttons[this.active_tab]) {
             tab_buttons[this.active_tab]!.classList.add('popup-subtab-active-btn');

@@ -100,10 +100,10 @@
     justify-content: flex-start;
 
     position: fixed;
-    min-width: 320px;
-    max-width: 480px;
-    min-height: 280px;
-    max-height: 320px;
+    min-width: 420px;
+    max-width: 700px;
+    min-height: 340px;
+    max-height: 540px;
     z-index: 500;
 
     background: #f28343;
@@ -189,4 +189,98 @@
     border-top: 1px solid white;
     border-right: 1px solid white;
     background-clip: padding-box;
+}
+
+
+
+/* MAIN TEXT SEARCH FORM */
+#ssa-popup-subtab-searchform-container {
+    display: flex;
+    flex-direction: row;
+    justify-content: stretch;
+    height: 30px;
+    min-height: 30px;
+    width: 100%;
+}
+
+#ssa-popup-subtab-searchform {
+    display: flex;
+    flex: 1;
+    flex-direction: row;
+    justify-content: stretch;
+    height: 100%;
+    width: 100%;
+
+}
+
+#ssa-popup-subtab-searchform>input {
+    display: flex;
+    flex: 1;
+    padding-left: 12px;
+    color: rgb(253, 253, 253);
+    font: 14px "Lato";
+    border: none;
+    padding: none;
+    background-color: #f28343;
+}
+
+
+#ssa-popup-subtab-searchform>input:focus {
+    outline: 1px solid rgb(253, 253, 253);
+    box-shadow: none;
+}
+
+#ssa-popup-subtabarea-container {
+    display: flex;
+    flex: 1;
+    flex-direction: row;
+    justify-content: stretch;
+}
+
+#ssa-popup-subtabarea-grid-outer {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    justify-content: stretch;
+}
+
+#ssa-popup-footer-container {
+    display: flex;
+    flex: 1;
+    flex-direction: row;
+    justify-content: stretch;
+    align-items: stretch;
+    height: 16px;
+    max-height: 16px;
+    width: 100%;
+    background-color: #2b253a;
+}
+
+.ssa-footer-resize {
+    display: flex;
+    flex: 1;
+    background-color: #2b253a;
+
+    width: 100%;
+}
+
+#ssa-footer-positioner {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    flex: 8;
+    background-color: #2b253a;
+    color: rgb(253, 253, 253);
+    font: 14px "Lato";
+
+    width: 100%;
+}
+
+#ssa-footer-positioner>span {
+    display: flex;
+    text-align: center;
+    line-height: 1;
+
+
 }
