@@ -15,6 +15,130 @@ function constructStyleElement(content: string): HTMLStyleElement {
 
 }
 
+function genId(prefix = '') {
+    return prefix + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+}
+
+type DMMessageType = 'DM_GET' | 'DM_SET' | 'DM_DELETE' | 'DM_CLEAR' | 'DM_BROADCAST';
+type DMResponse<T = any> = { id: string; ok: boolean; recipient: string; value?: T; error?: string; };
+
+interface DMRequest {
+    id: string;
+    type: DMMessageType;
+    key?: string;
+    value?: any;
+    options?: Record<string, any>;
+}
+
+
+function sendMessage<T = any>(request: DMRequest): Promise<DMResponse<T>> {
+
+    const win: any = window as any;
+    return new Promise((resolve, reject) => {
+        //chrome specific callback; c.rt.sendMessage may not call back in MV3 SW if error
+        const cb = (resp: DMResponse<T>) => {
+            const err = win.chrome?.runtime?.lastError;
+            if (err) {
+                reject(err);
+                return;
+            }
+            resolve(resp);
+        };
+        //try to use messaging API based on browser
+        try {
+            if (win.chrome && win.chrome.runtime && win.chrome.runtime.sendMessage) {
+                win.chrome.runtime.sendMessage(request, cb);
+            } else if (win.browser && win.browser.runtime && win.browser.runtime.sendMessage) {
+                win.browser.runtime.sendMessage(request).then(cb).catch(reject);
+            } else {
+                reject(new Error('No runtime messaging API.'))
+            }
+        } catch (e) {
+            reject(e);
+        }
+    });
+}
+
+export class DataManager {
+    private cache = new Map<string, any>();
+    private dirty = new Set<string>();
+    private broadcastPrefix = 'DM_BCAST_';
+    private contextName: string;
+    private storageListenerAttached = false;
+    private runtimeListenerAttached = false;
+
+
+    constructor(contextName?: string) {
+        this.contextName = contextName || genId('ctx_');
+        this.attachRuntimeListener();
+    }
+
+    private attachRuntimeListener() {
+        //attach once, receives broadcasts and direct messages
+        if (this.runtimeListenerAttached) { return; }
+        const win: any = window as any;
+
+        const messageHandler = (message: any, sender: any, sendResponse: any) => {
+            try {
+                //check if message?, if BROADCAST or for us, and key?
+                if (message && (message.type === 'DM_BROADCAST' || (message.recipient && message.recipient == this.contextName))
+                    && message.key !== undefined) {
+
+                    //update cache
+                    const { key, value } = message;
+                    this.cache.set(key, value);
+                    this.dirty.delete(key);
+                }
+            } catch (e) {
+                //ignore error
+            }
+        };
+        if (win.chrome && win.chrome.runtime && win.chrome.runtime.onMessage) {
+            win.chrome.runtime.onMessage.addListener(messageHandler);
+            this.runtimeListenerAttached = true;
+        } else if (win.browser && win.browser.runtime && win.browser.runtime.onMessage) {
+            win.browser.runtime.onMessage.addListener(messageHandler);
+            this.runtimeListenerAttached = true;
+        }
+    }
+
+    public async get<T = any>(key: string, opts: { force?: boolean } = {}): Promise<T | undefined> {
+        //unless forced, try to find in cache not dirty
+        if (!opts.force) {
+            if (this.cache.has(key) && !this.dirty.has(key)) {
+                return this.cache.get(key) as T;
+            }
+        }
+
+        const p = (async () => {
+            try {
+                const id = genId('req_');
+                const resp = await sendMessage<T>({ id: id, type: 'DM_GET', key });
+                if (!resp.ok) {
+                    throw new Error(resp.error || 'Database get request failed');
+                }
+                //data retrieved
+                this.cache.set(key, resp.value);
+                this.dirty.delete(key);
+
+                return resp.value as T | undefined;
+
+            } finally {
+
+                //TODO: manage in-flight get requests and dedupe them,
+                //remove value in this.inFlights when we receive message
+                //because we deduped above and we are the only get req for this data
+            }
+        })();
+
+        //TODO: set this key as in-flight after calling async fxn above
+        return p;
+    }
+
+
+}
+//END DATAMANAGER CLASS
+const dm = new DataManager(`content_${location.href}`);
 
 
 
@@ -34,7 +158,7 @@ interface PopupmenuState {
     active_tab: number;
 }
 
-class PopupmenuManager {
+class PopupMenu {
     //TemplateElement containing template for the popup
     private template: HTMLTemplateElement | null = null;
     //Div that controls popup visibility
@@ -61,7 +185,7 @@ class PopupmenuManager {
     }
 
     private initState(partial_state?: Partial<PopupmenuState>) {
-        const temp_state = { ...PopupmenuManager.default_state, ...partial_state } as PopupmenuState;
+        const temp_state = { ...PopupMenu.default_state, ...partial_state } as PopupmenuState;
 
         this.isVisible = temp_state.isVisible;
         this.template_name = temp_state.template_name;
@@ -126,6 +250,8 @@ class PopupmenuManager {
 
 
 
+
+
     }
 
     public show(): void {
@@ -175,11 +301,12 @@ class PopupmenuManager {
         return this.shadow;
     }
 
-    public changeTab(active: number) {
+    public async changeTab(active: number) {
         if (this.active_tab == active) { return; }
         const tab_buttons = this.shadow?.querySelectorAll('.popup-subtab-selector-btn');
         if (!tab_buttons) { return; }
 
+        //update button styles
         for (let i = 0; i <= tab_buttons.length; i++) {
             tab_buttons[i]?.classList.remove("popup-subtab-active-btn");
             if (active == i) {
@@ -188,18 +315,30 @@ class PopupmenuManager {
             }
         }
 
+        this.repopulateTabArea(active);
+
         //TODO: reconstruct tab area for the new active tab
+    }
+
+    private async repopulateTabArea(active: number) {
+        const tab_data_enum = ['userRules', 'userPinned', 'userRecent'];
+        //const tab_data_key = tab_data_enum[active] ?? 'userPinned';
+        const tab_data_key = 'userPinned'; //testing
+        //use DataManager to retrieve tab data (should be an array of entries to populate grid)
+        const tab_data = await dm.get(tab_data_key);
+        console.log(tab_data);
+
     }
 
 
 
 }
-//END PopupmenuManager class dfn
+//END PopupMenu class dfn
 
 //END POPUPMENU DEFS AND IMPLS
 
 //init popup
-let manager = new PopupmenuManager();
+let manager = new PopupMenu();
 
 //TODO: save the element itself or figure out some sort of way to persist across
 //searches and page loads/reloads
