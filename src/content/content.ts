@@ -2,10 +2,35 @@
 import popupmenu_template_html from '../../assets/components/popupmenu_template.html?raw';
 import popupmenu_template_css from '../../assets/components/popupmenu_template.css?inline';
 
+
+
+
+//random helpers
+//TODO: move these out to utils?
+function constructStyleElement(content: string): HTMLStyleElement {
+
+    const sty_el = document.createElement('style');
+    sty_el.textContent = content;
+    return sty_el;
+
+}
+
+
+
+
+
+
+
+
+
+
+
+
 //POPUPMENU Management interface/class definitions and implementations
 
-interface PopupmenuConfig {
-
+interface PopupmenuState {
+    isVisible: boolean,
+    template_name: string
 }
 
 class PopupmenuManager {
@@ -16,55 +41,99 @@ class PopupmenuManager {
     //shadow root
     private shadow: ShadowRoot | null = null;
 
-    constructor() {
-        this.initTemplate();
+    private isVisible!: boolean;
+    private template_name!: string;
+
+
+    private static readonly default_state: PopupmenuState = {
+        isVisible: false,
+        template_name: "default_template"
+    };
+
+    constructor(partial_state?: Partial<PopupmenuState>) {
+        this.initState(partial_state);
+        this.ensureTemplate();
         //TODO: remember previous visibility state and show accordingly
-        this.show();
+        this.initShadowRoot();
     }
 
-    private initTemplate(): void {
+    private initState(partial_state?: Partial<PopupmenuState>) {
+        const temp_state = { ...PopupmenuManager.default_state, ...partial_state } as PopupmenuState;
+
+        this.isVisible = temp_state.isVisible;
+        this.template_name = temp_state.template_name;
+    }
+    //TODO: function() = construct a Partial<PopupmenuState> to export/save
+
+    private ensureTemplate(): HTMLTemplateElement {
         //make and insert popup template into DOM (invisible by default)
-        if (!document.getElementById('ssa-injected-popupmenu-template')) {
+        let template = document.getElementById('ssa-injected-popupmenu-template') as HTMLTemplateElement;
+        if (!template) {
             const temp_container = document.createElement('div');
             temp_container.innerHTML = `${popupmenu_template_html}`;
-            document.body.appendChild(temp_container.firstElementChild!);
+            template = document.body.appendChild(temp_container.firstElementChild!) as HTMLTemplateElement;
         }
         //retrieve then store template in class attr
-        this.template = document.getElementById('ssa-injected-popupmenu-template')! as HTMLTemplateElement;
+        this.template = template;
+        return template;
+    }
 
-        //append the shadow root to the body with just the style defined
-        const wrapper_shadow = document.createElement('div');
-        this.shadow = wrapper_shadow.attachShadow({ mode: 'open' });
-        const style_element = document.createElement('style');
-        style_element.textContent = popupmenu_template_css;
-        this.shadow.appendChild(style_element);
-        document.body.appendChild(wrapper_shadow);
 
+    //TODO: this isn't popupmenu behavior so move it somewhere else
+    //TODO: harden against tampering with the shadow root/DOM
+    private initShadowRoot() {
+
+        let shadow_entry = document.getElementById('ssa-shadow-entry') as HTMLDivElement;
+        if (!shadow_entry) {
+
+            shadow_entry = document.createElement('div');
+            shadow_entry.id = 'ssa-shadow-entry';
+            this.shadow = shadow_entry.attachShadow({ mode: 'open' });
+            //TODO: separate out style injections
+            const style_element = constructStyleElement(popupmenu_template_css);
+            this.shadow.appendChild(style_element);
+            document.body.appendChild(shadow_entry);
+        }
+        this.shadow = shadow_entry.shadowRoot!;
+    }
+
+
+    private ensureOverlay(): HTMLDivElement {
+
+        let ovr = document.getElementById('ssa-popupmenu-overlay') as HTMLDivElement | null;
+        if (!ovr || !(this.overlay === ovr)) {
+            ovr?.remove();
+            ovr = document.createElement('div');
+            ovr.id = 'ssa-popupmenu-overlay';
+            this.overlay = ovr;
+        }
+        return ovr as HTMLDivElement;
     }
 
     public show(): void {
         //build popupmenu html element (with config options in future)
         if (!this.template) { return };
+        if (!this.shadow) { return };
 
-        //POPUP copy popupmenu template 
+        //POPUP generation
         const clone = this.template.content.cloneNode(true) as DocumentFragment;
         const popup = clone.getElementById('ssa-popupmenu-wrapper') as HTMLDivElement;
 
         //OVERLAY wrapper for visibility toggle
-        const wrapper_overlay = document.createElement('div');
-        wrapper_overlay.id = 'ssa-popupmenu-overlay';
+        const wrapper_overlay = this.ensureOverlay();
         wrapper_overlay.appendChild(popup);
 
         //SHADOW wrapper for shadow DOM/styles
-        if (!this.shadow) return;
         this.shadow.appendChild(wrapper_overlay);
         this.overlay = this.shadow.getElementById('ssa-popupmenu-overlay') as HTMLDivElement;
 
+        this.isVisible = true;
     }
 
     public hide(): void {
         this.overlay?.remove();
         this.overlay = null;
+        this.isVisible = false;
     }
 
     public toggleVisibility(): string {
@@ -85,6 +154,8 @@ class PopupmenuManager {
     public getShadowRoot() {
         return this.shadow;
     }
+
+
 
 }
 //END PopupmenuManager class dfn
