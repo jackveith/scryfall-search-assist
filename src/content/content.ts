@@ -123,6 +123,11 @@ class PopupmenuManager {
         if (tab_buttons[this.active_tab]) {
             tab_buttons[this.active_tab]!.classList.add('popup-subtab-active-btn');
         }
+        for (let i = 0; i <= tab_buttons.length; i++) {
+            tab_buttons[i]?.addEventListener('click', () => this.changeTab(i));
+        }
+
+
 
     }
 
@@ -171,6 +176,22 @@ class PopupmenuManager {
 
     public getShadowRoot() {
         return this.shadow;
+    }
+
+    public changeTab(active: number) {
+        if (this.active_tab == active) { return; }
+        const tab_buttons = this.shadow?.querySelectorAll('.popup-subtab-selector-btn');
+        if (!tab_buttons) { return; }
+
+        for (let i = 0; i <= tab_buttons.length; i++) {
+            tab_buttons[i]?.classList.remove("popup-subtab-active-btn");
+            if (active == i) {
+                tab_buttons[i]?.classList.add("popup-subtab-active-btn");
+                this.active_tab = i;
+            }
+        }
+
+        //TODO: reconstruct tab area for the new active tab
     }
 
 
