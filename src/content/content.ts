@@ -30,7 +30,8 @@ function constructStyleElement(content: string): HTMLStyleElement {
 
 interface PopupmenuState {
     isVisible: boolean,
-    template_name: string
+    template_name: string,
+    active_tab: number;
 }
 
 class PopupmenuManager {
@@ -43,11 +44,13 @@ class PopupmenuManager {
 
     private isVisible!: boolean;
     private template_name!: string;
+    private active_tab!: number;
 
 
     private static readonly default_state: PopupmenuState = {
         isVisible: false,
-        template_name: "default_template"
+        template_name: "default_template",
+        active_tab: 1,
     };
 
     constructor(partial_state?: Partial<PopupmenuState>) {
@@ -62,6 +65,7 @@ class PopupmenuManager {
 
         this.isVisible = temp_state.isVisible;
         this.template_name = temp_state.template_name;
+        this.active_tab = temp_state.active_tab;
     }
     //TODO: function() = construct a Partial<PopupmenuState> to export/save
 
@@ -110,22 +114,36 @@ class PopupmenuManager {
         return ovr as HTMLDivElement;
     }
 
+    private populatePopupShell(shell: HTMLDivElement) {
+        const tab_buttons = shell.getElementsByClassName('popup-subtab-selector-btn');
+        console.log(tab_buttons);
+        console.log(tab_buttons[this.active_tab]);
+        console.log(this.active_tab);
+
+        if (tab_buttons[this.active_tab]) {
+            tab_buttons[this.active_tab]!.classList.add('popup-subtab-active-btn');
+        }
+
+    }
+
     public show(): void {
         //build popupmenu html element (with config options in future)
         if (!this.template) { return };
         if (!this.shadow) { return };
 
-        //POPUP generation
-        const clone = this.template.content.cloneNode(true) as DocumentFragment;
-        const popup = clone.getElementById('ssa-popupmenu-wrapper') as HTMLDivElement;
-
         //OVERLAY wrapper for visibility toggle
         const wrapper_overlay = this.ensureOverlay();
-        wrapper_overlay.appendChild(popup);
-
         //SHADOW wrapper for shadow DOM/styles
         this.shadow.appendChild(wrapper_overlay);
         this.overlay = this.shadow.getElementById('ssa-popupmenu-overlay') as HTMLDivElement;
+        console.log(this.overlay);
+
+        //POPUP generation
+        const clone = this.template.content.cloneNode(true) as DocumentFragment;
+        this.overlay.appendChild(clone);
+        const popup_shell = this.shadow.getElementById('ssa-popupmenu-wrapper') as HTMLDivElement;
+        console.log(popup_shell);
+        this.populatePopupShell(popup_shell);
 
         this.isVisible = true;
     }
