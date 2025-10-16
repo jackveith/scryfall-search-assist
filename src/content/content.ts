@@ -2,33 +2,9 @@
 import popupmenu_template_html from '../../assets/components/popupmenu_template.html?raw';
 import popupmenu_template_css from '../../assets/components/popupmenu_template.css?inline';
 
+import type { DMMessageType, DMResponse, DMRequest } from '../types/ssa_types'
+import { constructStyleElement, genId } from '../utils/utils';
 
-
-
-//random helpers
-//TODO: move these out to utils?
-function constructStyleElement(content: string): HTMLStyleElement {
-
-    const sty_el = document.createElement('style');
-    sty_el.textContent = content;
-    return sty_el;
-
-}
-
-function genId(prefix = '') {
-    return prefix + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
-}
-
-type DMMessageType = 'DM_GET' | 'DM_SET' | 'DM_DELETE' | 'DM_CLEAR' | 'DM_BROADCAST';
-type DMResponse<T = any> = { id: string; ok: boolean; recipient: string; value?: T; error?: string; };
-
-interface DMRequest {
-    id: string;
-    type: DMMessageType;
-    key?: string;
-    value?: any;
-    options?: Record<string, any>;
-}
 
 const api = (() => {
     return (typeof browser !== "undefined") ? browser
@@ -49,10 +25,6 @@ function sendMessage<T = any>(request: DMRequest): Promise<DMResponse<T>> {
             resolve(resp);
         };
         //try to use messaging API based on browser
-        console.log('browser');
-        console.log(browser);
-        console.log('chrome');
-        console.log(chrome);
         try {
             if (!api) {
                 reject(new Error('No runtime messaging API.'))
@@ -85,7 +57,6 @@ export class DataManager {
     private attachRuntimeListener() {
         //attach once, receives broadcasts and direct messages
         if (this.runtimeListenerAttached) { return; }
-        const win: any = window as any;
 
         const messageHandler = (message: any, sender: any, sendResponse: any) => {
             try {
@@ -164,10 +135,10 @@ const dm = new DataManager(`content_${location.href}`);
 function createSubtabItem(item_data: { name: string, query: string, tags: [string] }) {
     const item = document.createElement('div');
     item.classList.add('ssa-popup-subtabarea-item');
-    const top_row = document.createElement('div');
-    const bot_row = document.createElement('div');
-    top_row.classList.add('ssa-popup-sta-item-toprow');
-    bot_row.classList.add('ssa-popup-sta-item-botrow');
+    //const top_row = document.createElement('div');
+    //const bot_row = document.createElement('div');
+    //top_row.classList.add('ssa-popup-sta-item-toprow');
+    //bot_row.classList.add('ssa-popup-sta-item-botrow');
 
     const title_span = document.createElement('span');
     title_span.classList.add('ssa-sta-item-title');
@@ -185,11 +156,9 @@ function createSubtabItem(item_data: { name: string, query: string, tags: [strin
     } else {
         tags_span.innerHTML = "untagged";
     }
-    top_row.appendChild(title_span);
-    top_row.appendChild(query_span);
-    bot_row.appendChild(tags_span);
-    item.appendChild(top_row);
-    item.appendChild(bot_row);
+    item.appendChild(title_span);
+    item.appendChild(query_span);
+    item.appendChild(tags_span);
     return item;
 }
 
@@ -237,20 +206,6 @@ class PopupMenu {
     }
     //TODO: function() = construct a Partial<PopupmenuState> to export/save
 
-    private ensureTemplate(): HTMLTemplateElement {
-        //make and insert popup template into DOM (invisible by default)
-        let template = document.getElementById('ssa-injected-popupmenu-template') as HTMLTemplateElement;
-        if (!template) {
-            const temp_container = document.createElement('div');
-            temp_container.innerHTML = `${popupmenu_template_html}`;
-            template = document.body.appendChild(temp_container.firstElementChild!) as HTMLTemplateElement;
-        }
-        //retrieve then store template in class attr
-        this.template = template;
-        return template;
-    }
-
-
     //TODO: this isn't popupmenu behavior so move it somewhere else
     //TODO: harden against tampering with the shadow root/DOM
     private initShadowRoot() {
@@ -269,6 +224,19 @@ class PopupMenu {
         this.shadow = shadow_entry.shadowRoot!;
     }
 
+    private ensureTemplate(): HTMLTemplateElement {
+        //make and insert popup template into DOM (invisible by default)
+        let template = document.getElementById('ssa-injected-popupmenu-template') as HTMLTemplateElement;
+        if (!template) {
+            const temp_container = document.createElement('div');
+            temp_container.innerHTML = `${popupmenu_template_html}`;
+            template = document.body.appendChild(temp_container.firstElementChild!) as HTMLTemplateElement;
+        }
+        //retrieve then store template in class attr
+        this.template = template;
+        return template;
+    }
+
 
     private ensureOverlay(): HTMLDivElement {
 
@@ -283,6 +251,30 @@ class PopupMenu {
     }
 
     private populatePopupShell(shell: HTMLDivElement) {
+
+        const main_search_form = shell.querySelector('#ssa-popup-searchform');
+        if (main_search_form) {
+
+            main_search_form.addEventListener('keydown', (e) => {
+                if ((e as KeyboardEvent).key === 'Escape') {
+                    e.preventDefault();
+                    this.hide();
+                }
+                e.stopPropagation();
+                e.stopImmediatePropagation();
+            }, true);
+
+            main_search_form.addEventListener('keyup', (e) => {
+                e.stopPropagation();
+                e.stopImmediatePropagation();
+            }, true);
+
+            main_search_form.addEventListener('keypress', (e) => {
+                e.stopPropagation();
+                e.stopImmediatePropagation();
+            }, true);
+        }
+
         const tab_buttons = shell.getElementsByClassName('popup-subtab-selector-btn');
 
         if (tab_buttons[this.active_tab]) {
@@ -291,12 +283,47 @@ class PopupMenu {
         for (let i = 0; i <= tab_buttons.length; i++) {
             tab_buttons[i]?.addEventListener('click', () => this.changeTab(i));
         }
-        this.repopulateTabArea(this.active_tab);
+        this.populateTabArea(this.active_tab);
 
+    }
 
+    public async changeTab(active: number) {
+        if (this.active_tab == active) { return; }
+        const tab_buttons = this.shadow?.querySelectorAll('.popup-subtab-selector-btn');
+        if (!tab_buttons) { return; }
 
+        //update button styles
+        for (let i = 0; i <= tab_buttons.length; i++) {
+            tab_buttons[i]?.classList.remove("popup-subtab-active-btn");
+            if (active == i) {
+                tab_buttons[i]?.classList.add("popup-subtab-active-btn");
+                this.active_tab = i;
+            }
+        }
 
+        this.populateTabArea(active);
 
+        //TODO: reconstruct tab area for the new active tab
+    }
+
+    private async populateTabArea(active: number) {
+        const tab_data_enum = ['userRules', 'userPinned', 'userRecent'];
+        //const tab_data_key = tab_data_enum[active] ?? 'userPinned';
+        const tab_data_key = 'userPinned'; //testing
+        //use DataManager to retrieve tab data (should be an array of entries to populate grid)
+        const tab_data = await dm.get(tab_data_key);
+        console.log(tab_data);
+        if (tab_data) {
+
+            const subtab_area = this.shadow?.getElementById('ssa-popup-subtabarea-grid-outer');
+            subtab_area?.replaceChildren();
+
+            for (let i = 0; i <= tab_data.length; i++) {
+
+                let new_item = createSubtabItem(tab_data[i]);
+                subtab_area?.appendChild(new_item);
+            }
+        }
     }
 
     public show(): void {
@@ -307,7 +334,6 @@ class PopupMenu {
         const wrapper_overlay = this.ensureOverlay();
         this.shadow.appendChild(wrapper_overlay);
         this.overlay = this.shadow.getElementById('ssa-popupmenu-overlay') as HTMLDivElement;
-        console.log(this.overlay);
 
         //POPUP generation
         const clone = this.template.content.cloneNode(true) as DocumentFragment;
@@ -316,6 +342,7 @@ class PopupMenu {
         this.populatePopupShell(popup_shell);
 
         this.isVisible = true;
+        this.focusSearchbar();
     }
 
     public hide(): void {
@@ -334,62 +361,25 @@ class PopupMenu {
         }
     }
 
-    public printattributes() {
-        console.log(this.overlay);
-        console.log(this.shadow);
-    }
-
     public getShadowRoot() {
         return this.shadow;
     }
-
-    public async changeTab(active: number) {
-        if (this.active_tab == active) { return; }
-        const tab_buttons = this.shadow?.querySelectorAll('.popup-subtab-selector-btn');
-        if (!tab_buttons) { return; }
-
-        //update button styles
-        for (let i = 0; i <= tab_buttons.length; i++) {
-            tab_buttons[i]?.classList.remove("popup-subtab-active-btn");
-            if (active == i) {
-                tab_buttons[i]?.classList.add("popup-subtab-active-btn");
-                this.active_tab = i;
-            }
-        }
-
-        this.repopulateTabArea(active);
-
-        //TODO: reconstruct tab area for the new active tab
+    public getIsVisible() {
+        return this.isVisible;
     }
 
-    private async repopulateTabArea(active: number) {
-        const tab_data_enum = ['userRules', 'userPinned', 'userRecent'];
-        //const tab_data_key = tab_data_enum[active] ?? 'userPinned';
-        const tab_data_key = 'userPinned'; //testing
-        //use DataManager to retrieve tab data (should be an array of entries to populate grid)
-        const tab_data = await dm.get(tab_data_key);
-        console.log(tab_data);
-        if (tab_data) {
+    public focusSearchbar() {
+        if (!this.isVisible) { return; }
+        if (!this.overlay) { return; }
 
-            const subtab_area = this.shadow?.getElementById('ssa-popup-subtabarea-grid-outer');
-            subtab_area?.replaceChildren();
-
-            for (let i = 0; i <= tab_data.length; i += 2) {
-
-                let new_tab_row = document.createElement('div');
-                new_tab_row.classList.add('ssa-popup-subtabarea-grid-row');
-                let new_item = createSubtabItem(tab_data[i]);
-                new_tab_row.appendChild(new_item);
-
-                if (i + 1 < tab_data.length) {
-                    new_item = createSubtabItem(tab_data[i + 1]);
-                    new_tab_row.appendChild(new_item);
-                }
-                subtab_area?.appendChild(new_tab_row);
-            }
+        const search_form = this.overlay.querySelector('#ssa-popup-searchform') as HTMLFormElement;
+        const search_input = search_form.elements[0] as HTMLInputElement;
+        if (search_input) {
+            search_input.focus();
         }
 
     }
+
 
 
 
@@ -399,7 +389,7 @@ class PopupMenu {
 //END POPUPMENU DEFS AND IMPLS
 
 //init popup
-let manager = new PopupMenu();
+let popupmenu = new PopupMenu();
 
 //TODO: save the element itself or figure out some sort of way to persist across
 //searches and page loads/reloads
@@ -423,9 +413,7 @@ async function injectSearchbarMenu() {
     //toggle popup visibility
     menu_link.addEventListener('click', (event) => {
         event.preventDefault();
-        console.log("menu button pressed.");
-        //manager?.printattributes();
-        manager?.toggleVisibility();
+        popupmenu?.toggleVisibility();
         updatePopupmenuPosition();
     });
 
@@ -469,7 +457,7 @@ async function injectSearchbarMenu() {
 
 function updatePopupmenuPosition() {
     const ref = document.getElementById('ssa-main-container-link');
-    const popup = manager.getShadowRoot()?.getElementById('ssa-popupmenu-wrapper');
+    const popup = popupmenu.getShadowRoot()?.getElementById('ssa-popupmenu-wrapper');
 
     if (popup && ref) {
         const rect = ref?.getBoundingClientRect();
@@ -484,17 +472,31 @@ function attachWindowEvents() {
     updatePopupmenuPosition();
     window.addEventListener('scroll', updatePopupmenuPosition);
     window.addEventListener('resize', updatePopupmenuPosition);
+    window.addEventListener('keydown', (e) => {
+        if (e.shiftKey && e.key === 'F') {
+            e.preventDefault();
+            e.stopPropagation();
+            if (!popupmenu.getIsVisible()) {
+                popupmenu.toggleVisibility();
+            }
+            updatePopupmenuPosition();
+            popupmenu.focusSearchbar();
+        }
+    }, true);
 
 }
 
 async function testDBManager() {
-    let res = await dm.set('dummy', 'dummy data.');
-    const b = await dm.set('userPinned', [
+    await dm.set('dummy', 'dummy data.');
+    await dm.set('userPinned', [
         { name: 'first', query: 'ci<=bg mv=3', tags: ['t1', 't2'] },
-        { name: 'second', query: 'ci<=temur t:creature legal:edh', tags: ['t3', 't4'] }
+        { name: 'second', query: 'ci<=temur t:creature legal:edh Fierce Emp', tags: ['t3', 't4'] },
+        { name: 'second', query: 'ci<=temur t:creature legal:edh Fierce Emp', tags: ['t3', 't4'] },
+        { name: 'second', query: 'ci<=temur t:creature legal:edh Fierce Emp', tags: ['t3', 't4'] },
+        { name: 'second', query: 'ci<=temur t:creature legal:edh Fierce Emp', tags: ['t3', 't4'] },
+        { name: 'second', query: 'ci<=temur t:creature legal:edh Fierce Emp', tags: ['t3', 't4'] },
+        { name: 'second', query: 'ci<=temur t:creature legal:edh Fierce Emp', tags: ['t3', 't4'] },
     ])
-    console.log(res);
-    res = await dm.get('dummy');
 }
 
 async function injectUI() {

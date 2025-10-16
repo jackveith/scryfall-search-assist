@@ -1,16 +1,5 @@
-import { get, set } from '../utils/storage';
+import type { DMMessageType, DMResponse, DMRequest } from '../types/ssa_types'
 
-
-type DMMessageType = 'DM_GET' | 'DM_SET' | 'DM_DELETE' | 'DM_CLEAR' | 'DM_BROADCAST';
-type DMResponse<T = any> = { id: string; ok: boolean; recipient: string; value?: T; error?: string; };
-
-interface DMRequest {
-    id: string;
-    type: DMMessageType;
-    key?: string;
-    value?: any;
-    options?: Record<string, any>;
-}
 
 const api = (() => {
     return (typeof browser !== "undefined") ? browser
@@ -21,7 +10,6 @@ const api = (() => {
 function handleMessage(request: DMRequest, sender: any, sendResponse: (r: any) => void) {
 
     (async () => {
-        console.log('called handleMessage');
         try {
             switch (request.type) {
                 case 'DM_GET': {

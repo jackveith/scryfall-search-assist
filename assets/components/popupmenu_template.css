@@ -248,6 +248,7 @@
 #ssa-popup-subtab-searchform>input:focus {
     outline: 1px solid rgb(253, 253, 253);
     box-shadow: none;
+    z-index: 520;
 }
 
 #ssa-popup-subtabarea-container {
@@ -255,62 +256,53 @@
     flex: 1;
     flex-direction: row;
     justify-content: stretch;
+
+    border-bottom: 2px solid #f77c34;
 }
 
 #ssa-popup-subtabarea-grid-outer {
     display: flex;
     flex: 1;
-    flex-direction: column;
-    width: 100%;
-}
-
-.ssa-popup-subtabarea-grid-row {
-    display: flex;
     flex-direction: row;
+    flex-wrap: wrap;
     align-items: stretch;
-
+    gap: 8px;
     width: 100%;
-    height: 56px;
-    max-height: 56px;
 
+    padding: 4px 8px;
+    background-color: #2b253a;
+    box-sizing: border-box;
 }
+
 
 .ssa-popup-subtabarea-item {
     display: flex;
-    flex: 1 1 0;
+    flex: 1 1 clamp(180px, 200px, 240px);
+    height: 64px;
+    max-height: 64px;
+
     flex-direction: column;
-    justify-content: stretch;
-    align-items: stretch;
-    min-width: 0;
-    background: #f28343;
+    justify-content: center;
+    align-items: center;
+
+    background: #fdfdfd;
     padding: 4px;
+    box-sizing: border-box;
+
+    transition: all;
 }
 
 .ssa-popup-subtabarea-item:hover {
-    outline: 1px solid white;
-    background: #fa955b;
+    outline: 2px solid #f77c34;
+    background: #fff8ed;
+    border-radius: 8px;
     z-index: 510;
 
 }
 
-.ssa-popup-subtabarea-item>.ssa-popup-sta-item-toprow {
+.ssa-popup-subtabarea-item>.ssa-sta-item-title {
     display: flex;
-    flex: 1;
-    flex-direction: row;
-}
-
-.ssa-popup-subtabarea-item>.ssa-popup-sta-item-botrow {
-    display: flex;
-    flex: 1;
-    flex-direction: row;
-}
-
-.ssa-popup-sta-item-toprow>.ssa-sta-item-title {
-    display: flex;
-    align-self: flex-end;
-    flex: 0 0 auto;
-    padding-left: 6px;
-    padding-right: 6px;
+    flex: 6 0 auto;
 
     white-space: nowrap;
     font: 20px "Lato";
@@ -318,14 +310,14 @@
 
 }
 
-.ssa-popup-sta-item-toprow>.ssa-sta-item-query {
+.ssa-popup-subtabarea-item>.ssa-sta-item-query {
     display: flex;
-    align-self: center;
-    flex: 0 1 auto;
+    flex: 4 0 auto;
 
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+    max-width: 100%;
 
     font: 16px "Lato";
     font-style: italic;
@@ -333,18 +325,17 @@
 
 }
 
-.ssa-popup-sta-item-botrow>.ssa-sta-item-tags {
+.ssa-popup-subtabarea-item>.ssa-sta-item-tags {
     display: flex;
-    align-self: flex-end;
-    padding-left: 10px;
+    flex: 3 0 auto;
 
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
 
-    font: 16px "Lato";
+    font: 14px "Lato";
     font-weight: 900;
-    color: #e6e6e6;
+    color: #000000;
 
 }
 
@@ -355,8 +346,8 @@
     flex-direction: row;
     justify-content: stretch;
     align-items: stretch;
-    height: 16px;
-    max-height: 16px;
+    height: 24px;
+    max-height: 24px;
     width: 100%;
     background-color: #2b253a;
 }
