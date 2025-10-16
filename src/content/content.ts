@@ -30,14 +30,18 @@ interface DMRequest {
     options?: Record<string, any>;
 }
 
+const api = (() => {
+    return (typeof browser !== "undefined") ? browser
+        : (typeof chrome !== "undefined") ? chrome
+            : null;
+})();
 
 function sendMessage<T = any>(request: DMRequest): Promise<DMResponse<T>> {
 
-    const win: any = window as any;
     return new Promise((resolve, reject) => {
         //chrome specific callback; c.rt.sendMessage may not call back in MV3 SW if error
         const cb = (resp: DMResponse<T>) => {
-            const err = win.chrome?.runtime?.lastError;
+            const err = api === chrome ? chrome?.runtime?.lastError : null;
             if (err) {
                 reject(err);
                 return;
@@ -45,14 +49,19 @@ function sendMessage<T = any>(request: DMRequest): Promise<DMResponse<T>> {
             resolve(resp);
         };
         //try to use messaging API based on browser
+        console.log('browser');
+        console.log(browser);
+        console.log('chrome');
+        console.log(chrome);
         try {
-            if (win.chrome && win.chrome.runtime && win.chrome.runtime.sendMessage) {
-                win.chrome.runtime.sendMessage(request, cb);
-            } else if (win.browser && win.browser.runtime && win.browser.runtime.sendMessage) {
-                win.browser.runtime.sendMessage(request).then(cb).catch(reject);
-            } else {
+            if (!api) {
                 reject(new Error('No runtime messaging API.'))
+            } else if (api === browser) {
+                browser.runtime.sendMessage(request).then(cb).catch(reject);
+            } else if (api === chrome) {
+                chrome.runtime.sendMessage(request, cb);
             }
+
         } catch (e) {
             reject(e);
         }
@@ -93,13 +102,9 @@ export class DataManager {
                 //ignore error
             }
         };
-        if (win.chrome && win.chrome.runtime && win.chrome.runtime.onMessage) {
-            win.chrome.runtime.onMessage.addListener(messageHandler);
-            this.runtimeListenerAttached = true;
-        } else if (win.browser && win.browser.runtime && win.browser.runtime.onMessage) {
-            win.browser.runtime.onMessage.addListener(messageHandler);
-            this.runtimeListenerAttached = true;
-        }
+
+        api?.runtime.onMessage.addListener(messageHandler);
+        this.runtimeListenerAttached = true;
     }
 
     public async get<T = any>(key: string, opts: { force?: boolean } = {}): Promise<T | undefined> {
@@ -135,19 +140,58 @@ export class DataManager {
         return p;
     }
 
+    //set value in storage, set cache immediately. sync = false delays sync (useful for batched writes)
+    public async set(key: string, value: any, options: { sync?: boolean } = { sync: true }) {
 
+        this.cache.set(key, value);
+
+        //don't message background if sync = false
+        if (!options.sync) {
+            this.dirty.add(key);
+            return;
+        }
+
+        //send message to update background store
+        const id = genId('req_');
+        const resp = await sendMessage({ id, type: 'DM_SET', key, value });
+        if (!resp.ok) { throw new Error(resp.error || 'Database set request failed'); }
+        this.dirty.delete(key);
+    }
 }
 //END DATAMANAGER CLASS
 const dm = new DataManager(`content_${location.href}`);
 
+function createSubtabItem(item_data: { name: string, query: string, tags: [string] }) {
+    const item = document.createElement('div');
+    item.classList.add('ssa-popup-subtabarea-item');
+    const top_row = document.createElement('div');
+    const bot_row = document.createElement('div');
+    top_row.classList.add('ssa-popup-sta-item-toprow');
+    bot_row.classList.add('ssa-popup-sta-item-botrow');
 
-
-
-
-
-
-
-
+    const title_span = document.createElement('span');
+    title_span.classList.add('ssa-sta-item-title');
+    title_span.innerHTML = item_data.name;
+    const query_span = document.createElement('span');
+    query_span.classList.add('ssa-sta-item-query');
+    query_span.innerHTML = item_data.query;
+    const tags_span = document.createElement('span');
+    tags_span.classList.add('ssa-sta-item-tags');
+    if (item_data.tags.length > 0) {
+        tags_span.innerHTML += item_data.tags[0];
+        for (let i = 1; i < item_data.tags.length; i++) {
+            tags_span.innerHTML += " · " + item_data.tags[i];
+        }
+    } else {
+        tags_span.innerHTML = "untagged";
+    }
+    top_row.appendChild(title_span);
+    top_row.appendChild(query_span);
+    bot_row.appendChild(tags_span);
+    item.appendChild(top_row);
+    item.appendChild(bot_row);
+    return item;
+}
 
 
 //POPUPMENU Management interface/class definitions and implementations
@@ -247,6 +291,7 @@ class PopupMenu {
         for (let i = 0; i <= tab_buttons.length; i++) {
             tab_buttons[i]?.addEventListener('click', () => this.changeTab(i));
         }
+        this.repopulateTabArea(this.active_tab);
 
 
 
@@ -255,13 +300,11 @@ class PopupMenu {
     }
 
     public show(): void {
-        //build popupmenu html element (with config options in future)
         if (!this.template) { return };
         if (!this.shadow) { return };
 
-        //OVERLAY wrapper for visibility toggle
+        //add overlay wrapper to shadow DOM
         const wrapper_overlay = this.ensureOverlay();
-        //SHADOW wrapper for shadow DOM/styles
         this.shadow.appendChild(wrapper_overlay);
         this.overlay = this.shadow.getElementById('ssa-popupmenu-overlay') as HTMLDivElement;
         console.log(this.overlay);
@@ -270,7 +313,6 @@ class PopupMenu {
         const clone = this.template.content.cloneNode(true) as DocumentFragment;
         this.overlay.appendChild(clone);
         const popup_shell = this.shadow.getElementById('ssa-popupmenu-wrapper') as HTMLDivElement;
-        console.log(popup_shell);
         this.populatePopupShell(popup_shell);
 
         this.isVisible = true;
@@ -327,6 +369,25 @@ class PopupMenu {
         //use DataManager to retrieve tab data (should be an array of entries to populate grid)
         const tab_data = await dm.get(tab_data_key);
         console.log(tab_data);
+        if (tab_data) {
+
+            const subtab_area = this.shadow?.getElementById('ssa-popup-subtabarea-grid-outer');
+            subtab_area?.replaceChildren();
+
+            for (let i = 0; i <= tab_data.length; i += 2) {
+
+                let new_tab_row = document.createElement('div');
+                new_tab_row.classList.add('ssa-popup-subtabarea-grid-row');
+                let new_item = createSubtabItem(tab_data[i]);
+                new_tab_row.appendChild(new_item);
+
+                if (i + 1 < tab_data.length) {
+                    new_item = createSubtabItem(tab_data[i + 1]);
+                    new_tab_row.appendChild(new_item);
+                }
+                subtab_area?.appendChild(new_tab_row);
+            }
+        }
 
     }
 
@@ -426,9 +487,20 @@ function attachWindowEvents() {
 
 }
 
+async function testDBManager() {
+    let res = await dm.set('dummy', 'dummy data.');
+    const b = await dm.set('userPinned', [
+        { name: 'first', query: 'ci<=bg mv=3', tags: ['t1', 't2'] },
+        { name: 'second', query: 'ci<=temur t:creature legal:edh', tags: ['t3', 't4'] }
+    ])
+    console.log(res);
+    res = await dm.get('dummy');
+}
+
 async function injectUI() {
     await injectSearchbarMenu();
     attachWindowEvents();
+    testDBManager();
 }
 
 
