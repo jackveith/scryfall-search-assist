@@ -1,11 +1,6 @@
 import type { DMMessageType, DMResponse, DMRequest } from '../types/ssa_types'
+import api from '../api';
 
-
-const api = (() => {
-    return (typeof browser !== "undefined") ? browser
-        : (typeof chrome !== "undefined") ? chrome
-            : null;
-})();
 
 function handleMessage(request: DMRequest, sender: any, sendResponse: (r: any) => void) {
 
