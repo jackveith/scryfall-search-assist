@@ -61,10 +61,6 @@ async function testDBManager() {
         { name: 'first', query: 'ci<=bg mv=3', tags: ['t1', 't2'] },
         { name: 'second', query: 'ci<=temur t:creature legal:edh Fierce Emp', tags: ['t3', 't4'] },
         { name: 'second', query: 'ci<=temur t:creature legal:edh Fierce Emp', tags: ['t3', 't4'] },
-        { name: 'second', query: 'ci<=temur t:creature legal:edh Fierce Emp', tags: ['t3', 't4'] },
-        { name: 'second', query: 'ci<=temur t:creature legal:edh Fierce Emp', tags: ['t3', 't4'] },
-        { name: 'second', query: 'ci<=temur t:creature legal:edh Fierce Emp', tags: ['t3', 't4'] },
-        { name: 'second', query: 'ci<=temur t:creature legal:edh Fierce Emp', tags: ['t3', 't4'] },
     ]);
 }
 

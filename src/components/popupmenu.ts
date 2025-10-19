@@ -8,6 +8,7 @@ import { constructStyleElement, genId, sendMessage } from '../utils/utils';
 import api from '../utils/api';
 import dm from './datamanager';
 
+const tab_data_enum = ['userRules', 'userPinned', 'userRecent'];
 
 export interface PopupmenuState {
     isVisible: boolean,
@@ -97,6 +98,7 @@ export class PopupMenu {
 
     private populatePopupShell(shell: HTMLDivElement) {
 
+        //suppress other key events in search form
         const main_search_form = shell.querySelector('#ssa-popup-searchform');
         if (main_search_form) {
             main_search_form.addEventListener('keydown', haltEventPropogation, true);
@@ -104,15 +106,17 @@ export class PopupMenu {
             main_search_form.addEventListener('keypress', haltEventPropogation, true);
         }
 
+        //
         const tab_buttons = shell.getElementsByClassName('popup-subtab-selector-btn');
-
         if (tab_buttons[this.active_tab]) {
             tab_buttons[this.active_tab]!.classList.add('popup-subtab-active-btn');
         }
         for (let i = 0; i <= tab_buttons.length; i++) {
+            //TODO: make a function factory that maps i to tab_data_enum
             tab_buttons[i]?.addEventListener('click', () => this.changeTab(i));
         }
-        this.populateTabArea(this.active_tab);
+        if (!(this.active_tab < tab_data_enum.length)) { return; }
+        this.populateTabArea(tab_data_enum[this.active_tab]!);
 
         const resize_handles = shell.querySelectorAll('.ssa-footer-resize');
         resize_handles.forEach((item) => {
@@ -148,7 +152,7 @@ export class PopupMenu {
 
     //TODO: make this based on a string enum ['Rules', 'Pinned', 'Recents']
     public async changeTab(active: number) {
-        if (this.active_tab == active) { return; }
+        //if (this.active_tab == active) { return; }
         const tab_buttons = this.shadow?.querySelectorAll('.popup-subtab-selector-btn');
         if (!tab_buttons) { return; }
 
@@ -161,11 +165,13 @@ export class PopupMenu {
             }
         }
 
-        this.populateTabArea(active);
+        if (active >= tab_data_enum.length) { return; }
+        console.log(tab_data_enum[active]);
+        await this.populateTabArea(tab_data_enum[active]!);
     }
 
-    private async populateTabArea(active: number) {
-        const tab_data_enum = ['userRules', 'userPinned', 'userRecent'];
+    private async populateTabArea(active: string) {
+        console.log(`pop active ${active}`);
         //const tab_data_key = tab_data_enum[active] ?? 'userPinned';
         const tab_data_key = 'userPinned'; //testing
         //use DataManager to retrieve tab data (should be an array of entries to populate grid)
@@ -227,6 +233,9 @@ export class PopupMenu {
     }
     public getOverlay() {
         return this.overlay;
+    }
+    public getActiveTab() {
+        return this.active_tab;
     }
 
     public focusSearchbar() {
@@ -303,6 +312,10 @@ export class PopupMenu {
             this.positionX = newX;
             this.updatePosition();
         }
+
+        const subtab_area = wrapper.querySelector('#ssa-popup-subtabarea-grid-outer') as HTMLElement;
+        void subtab_area?.offsetHeight;
+
     }
 
     public stopResize(listener1: (e: MouseEvent) => void, listener2: (e: MouseEvent) => void) {
@@ -344,6 +357,36 @@ export function createSubtabItem(item_data: { name: string, query: string, tags:
     item.appendChild(title_span);
     item.appendChild(query_span);
     //item.appendChild(tags_span);
+    //
+    //
+
+
+    item.addEventListener('dblclick', (e) => {
+
+        const form = document.querySelector('.header-search') as HTMLFormElement;
+        const input = document.getElementById('header-search-field') as HTMLInputElement;
+        input.value = item_data.query;
+        form.submit();
+    })
+
+
+    //logic for reconstructing all hidden input fields,
+    //TODO: allow user to mutate hidden fields
+
+    //const sc_unique = (document.getElementById('#unique') as HTMLInputElement)?.value ?? null;
+    //const sc_as = (document.getElementById('#as') as HTMLInputElement)?.value ?? null;
+    //const sc_order = (document.getElementById('#order') as HTMLInputElement)?.value ?? null;
+
+    //const search_obj = new URLSearchParams();
+    //search_obj.append("q", item_data.query);
+    //search_obj.append("unique", sc_unique);
+    //search_obj.append("as", sc_as);
+    //search_obj.append("order", sc_order);
+
+    //const sc_input = document.querySelector('#header-search-field') as HTMLInputElement;
+    //sc_input.value = item_data.query;
+
+
     return item;
 }
 
