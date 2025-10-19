@@ -24,6 +24,9 @@ export class PopupMenu {
     private isVisible!: boolean;
     private template_name!: string;
     private active_tab!: number;
+    private isResizing: boolean = false;
+    private positionX = 512;
+    private positionY = 64;
 
 
     private static readonly default_state: PopupmenuState = {
@@ -110,6 +113,36 @@ export class PopupMenu {
             tab_buttons[i]?.addEventListener('click', () => this.changeTab(i));
         }
         this.populateTabArea(this.active_tab);
+
+        const resize_handles = shell.querySelectorAll('.ssa-footer-resize');
+        resize_handles.forEach((item) => {
+            const side = item.id === 'ssa-footer-resize-left' ? 'left' : 'right';
+            item.addEventListener('mousedown', (e) => {
+                e.preventDefault();
+                const mouse_e = (e as MouseEvent);
+                const wrapper = shell.querySelector('#ssa-popupmenu-outer-container-div') as HTMLDivElement;
+                console.log(wrapper);
+                if (!wrapper) { return; }
+                const coords = {
+                    startX: mouse_e.clientX,
+                    startY: mouse_e.clientY,
+                    startW: parseInt(window.getComputedStyle(wrapper).width, 10),
+                    startH: parseInt(window.getComputedStyle(wrapper).height, 10)
+                }
+                this.isResizing = true;
+
+                console.log(this);
+                const cb_resize = (e: MouseEvent) => this.resize(e, wrapper, coords, side);
+                const cb_stopResize = (e: MouseEvent) => this.stopResize(cb_resize, cb_stopResize);
+
+
+                document.addEventListener('mousemove', cb_resize);
+                document.addEventListener('mouseup', cb_stopResize);
+
+            })
+
+        }, this);
+
 
     }
 
@@ -219,9 +252,63 @@ export class PopupMenu {
         if (popup_wrapper && ref) {
             const rect = ref.getBoundingClientRect();
             popup_wrapper.style.position = 'absolute';
-            popup_wrapper.style.left = `${(rect.left - 40)}px`;
-            popup_wrapper.style.top = `${(rect.bottom + 8)}px`;
+            popup_wrapper.style.left = `${(this.positionX)}px`;
+            popup_wrapper.style.top = `${(this.positionY)}px`;
         }
+    }
+
+
+    public resize(e: MouseEvent, wrapper: HTMLElement, coords: { startX: number, startY: number, startW: number, startH: number }, side: string) {
+
+        if (!this.isResizing) { return; }
+        const current_style = getComputedStyle(wrapper);
+        const minW = parseInt(current_style.minWidth);
+        const maxW = parseInt(current_style.maxWidth);
+        const minH = parseInt(current_style.minHeight);
+        const maxH = parseInt(current_style.maxHeight);
+
+        let newW = coords.startW;
+        let newH = coords.startH;
+        let newX = this.positionX;
+
+        const bounding_rect = wrapper.getBoundingClientRect();
+
+        if (side === "right") {
+            newW = coords.startW + (e.clientX - coords.startX);
+            newW = Math.min(Math.max(newW, minW), maxW);
+        } else if (side === "left") {
+            // When dragging left, width increases as e.clientX decreases
+            const deltaX = e.clientX - bounding_rect.left;
+            newW = bounding_rect.width - deltaX;
+            //clamp
+            newW = Math.min(Math.max(newW, minW), maxW);
+            // Move X so that right side stays still
+            if (newW > minW) {
+                newX = this.positionX + deltaX;
+            } else {
+                const w_dif = bounding_rect.width - newW;
+                newX = this.positionX + w_dif;
+            }
+        }
+
+        // Handle vertical resize (if you ever add top/bottom)
+        newH = coords.startH + (e.clientY - coords.startY);
+        newH = Math.min(Math.max(newH, minH), maxH);
+
+
+        wrapper.style.width = `${newW}px`;
+        wrapper.style.height = `${newH}px`;
+
+        if (side === "left") {
+            this.positionX = newX;
+            this.updatePosition();
+        }
+    }
+
+    public stopResize(listener1: (e: MouseEvent) => void, listener2: (e: MouseEvent) => void) {
+        this.isResizing = false;
+        document.removeEventListener('mousemove', listener1 as EventListenerOrEventListenerObject);
+        document.removeEventListener('mouseup', listener2 as EventListenerOrEventListenerObject);
     }
 
 }

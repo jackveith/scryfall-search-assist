@@ -1,14 +1,12 @@
-import api from '../api';
+import api from '../utils/api';
 
 import type { DMMessageType, DMResponse, DMRequest } from '../types/ssa_types'
 import { constructStyleElement, genId, sendMessage } from '../utils/utils';
 
 import dm from '../components/datamanager';
-dm.setContextName(`content_${location.href}`);
-
 import popupmenu from '../components/popupmenu';
 import searchbarmenu from '../components/searchbarmenu';
-
+dm.setContextName(`content_${location.href}`);
 
 //TODO: custom keyboard shortcuts
 function attachWindowEvents() {
@@ -48,6 +46,15 @@ function attachWindowEvents() {
 
 }
 
+function analyzeWindowLocation() {
+    const loc = window.location;
+    if (loc.pathname !== '/search') { return; }
+
+    const params = new URLSearchParams(window.location.search);
+    console.log(`q: ${params.get('q')}`);
+
+}
+
 async function testDBManager() {
     await dm.set('dummy', 'dummy data.');
     await dm.set('userPinned', [
@@ -58,13 +65,16 @@ async function testDBManager() {
         { name: 'second', query: 'ci<=temur t:creature legal:edh Fierce Emp', tags: ['t3', 't4'] },
         { name: 'second', query: 'ci<=temur t:creature legal:edh Fierce Emp', tags: ['t3', 't4'] },
         { name: 'second', query: 'ci<=temur t:creature legal:edh Fierce Emp', tags: ['t3', 't4'] },
-    ])
+    ]);
 }
 
 async function injectUI() {
     //await injectSearchbarMenu();
     attachWindowEvents();
+    console.log(searchbarmenu);
+    await searchbarmenu.init();
     testDBManager();
+    analyzeWindowLocation();
 }
 
 
