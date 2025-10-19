@@ -1,26 +1,30 @@
 
-import api from '../api';
+import api from '../utils/api';
 import dm from './datamanager';
 import popupmenu from './popupmenu';
 
 
 export class SearchbarMenu {
 
-    private menu!: HTMLAnchorElement;
-    private toolbar_container!: HTMLDivElement;
+    private menu: HTMLAnchorElement | null = null;
+    private toolbar_container: HTMLDivElement | null = null;
 
     constructor() {
-        this.constructMenu();
-        this.attachMenu();
-        this.mutateDivider();
+
+    }
+
+    public async init() {
+        await this.constructMenu();
     }
 
     private async constructMenu() {
 
-        //find find Scryfall HTML elements for editing + inserting my own HTML
         const toolbar_links_div = document.querySelector(".header-links");
         if (!toolbar_links_div) { throw new Error("header-links element not found.") }
         this.toolbar_container = toolbar_links_div as HTMLDivElement;
+
+        //CONTAINER
+        const menu_container = document.createElement('div');
 
         //MENU CONTAINER (LINK)
         const menu_link = document.createElement('a');
@@ -64,23 +68,21 @@ export class SearchbarMenu {
         menu_label.style.setProperty('padding-left', '2px');
         menu_label.style.setProperty('padding-right', '2px');
 
+        //MENU PIN BUTTON
+
         //CONSTRUCT MENU + append to native container
         menu_link.appendChild(menu_icon);
         menu_link.appendChild(menu_label);
         this.menu = menu_link;
-    }
-
-    private attachMenu() {
         this.toolbar_container.prepend(this.menu);
-    }
 
-    //adjust native divider for visual clarity
-    private mutateDivider() {
-        const links_divider_left = this.toolbar_container.children[0] ?? null;
+        const links_divider_left = this.toolbar_container?.children[0] ?? null;
         if (!links_divider_left) return;
 
         (links_divider_left as HTMLElement).style.setProperty('margin-left', '6px');
+
     }
+
 }
 
 const sbm = new SearchbarMenu();

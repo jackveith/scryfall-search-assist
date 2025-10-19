@@ -1,6 +1,12 @@
 import type { DMMessageType, DMResponse, DMRequest } from '../types/ssa_types'
-import api from '../api';
+const api: typeof browser | typeof chrome =
+    typeof browser !== undefined ? browser
+        : typeof chrome !== undefined ? chrome
+            : (() => {
+                throw new Error("no browser api found.")
+            })();
 
+console.log(api);
 
 function handleMessage(request: DMRequest, sender: any, sendResponse: (r: any) => void) {
 

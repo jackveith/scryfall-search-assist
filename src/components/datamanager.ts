@@ -1,5 +1,5 @@
 
-import api from '../api';
+import api from '../utils/api';
 
 import type { DMMessageType, DMResponse, DMRequest } from '../types/ssa_types'
 import { genId, sendMessage } from '../utils/utils';

@@ -5,7 +5,7 @@ import popupmenu_template_css from '../../assets/components/popupmenu_template.c
 import type { DMMessageType, DMResponse, DMRequest } from '../types/ssa_types'
 import { constructStyleElement, genId, sendMessage } from '../utils/utils';
 
-import api from '../api';
+import api from '../utils/api';
 import dm from './datamanager';
 
 
@@ -137,9 +137,9 @@ export class PopupMenu {
         const tab_data_key = 'userPinned'; //testing
         //use DataManager to retrieve tab data (should be an array of entries to populate grid)
         const tab_data = await dm.get(tab_data_key);
+
         console.log(tab_data);
         if (tab_data) {
-
             const subtab_area = this.shadow?.getElementById('ssa-popup-subtabarea-grid-outer');
             subtab_area?.replaceChildren();
 
@@ -240,6 +240,8 @@ export function createSubtabItem(item_data: { name: string, query: string, tags:
     const query_span = document.createElement('span');
     query_span.classList.add('ssa-sta-item-query');
     query_span.innerHTML = item_data.query;
+
+    /*
     const tags_span = document.createElement('span');
     tags_span.classList.add('ssa-sta-item-tags');
     if (item_data.tags.length > 0) {
@@ -250,9 +252,11 @@ export function createSubtabItem(item_data: { name: string, query: string, tags:
     } else {
         tags_span.innerHTML = "untagged";
     }
+    */
+
     item.appendChild(title_span);
     item.appendChild(query_span);
-    item.appendChild(tags_span);
+    //item.appendChild(tags_span);
     return item;
 }
 
@@ -263,8 +267,3 @@ const haltEventPropogation = (e: Event) => {
 
 const pm = new PopupMenu();
 export default pm;
-
-
-
-
-

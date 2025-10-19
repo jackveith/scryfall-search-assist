@@ -1,5 +1,5 @@
 import type { DMRequest, DMResponse } from "../types/ssa_types";
-import api from '../api'
+import api from './api';
 
 export function constructStyleElement(content: string): HTMLStyleElement {
 
