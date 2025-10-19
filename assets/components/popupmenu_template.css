@@ -199,6 +199,8 @@
     background-color: #9D5A34;
     border: none;
     box-sizing: border-box;
+
+    cursor: pointer;
 }
 
 .popup-subtab-active-btn {
@@ -277,8 +279,8 @@
 .ssa-popup-subtabarea-item {
     display: flex;
     flex: 1;
-    height: 56px;
-    max-height: 56px;
+    min-height: 32px;
+    max-height: 40px;
 
     flex-direction: row;
     justify-content: flex-start;
@@ -309,11 +311,12 @@
     white-space: nowrap;
     font: 20px "Lato";
     font-weight: 900;
+    cursor: default;
 }
 
 .ssa-popup-subtabarea-item>.ssa-sta-item-query {
     display: flex;
-    flex: 1 0 auto;
+    flex: 1 1 auto;
     padding-left: 8px;
 
     overflow: hidden;
@@ -323,6 +326,7 @@
     font: 16px "Lato";
     font-style: italic;
     color: rgba(253, 253, 253, .8);
+    cursor: default;
 }
 
 .ssa-popup-subtabarea-item>.ssa-sta-item-tags {
