@@ -75,12 +75,32 @@ export class SearchbarMenu {
             const refreshSubtabList = popupmenu.getActiveTab() === 1 ? true : false;
             await pinNativeSearchValue();
         })
+        menu_pin.style.setProperty('padding-left', '2px');
+        menu_pin.style.setProperty('padding-right', '2px');
         //MENU PIN LABEL
         const menu_pin_label = document.createElement('span');
         menu_pin_label.textContent = "P";
         menu_pin_label.style.setProperty('font-weight', '700');
         menu_pin_label.style.setProperty('padding-left', '2px');
         menu_pin_label.style.setProperty('padding-right', '2px');
+
+        //MENU PIN SVG
+        const pin_icon = document.createElementNS("http://www.w3.org/2000/svg", 'svg');
+        const pin_icon_url = api.runtime.getURL('assets/icons/pin-icon.svg');
+        const pin_icon_file = await fetch(pin_icon_url);
+        const pin_icon_filetext = await pin_icon_file.text();
+        const pin_icon_path = new DOMParser().parseFromString(pin_icon_filetext, 'image/svg+xml').querySelector('path');
+        const pin_svg_from_text = pin_icon_path?.cloneNode(true) as SVGPathElement;
+        pin_icon.appendChild(pin_svg_from_text);
+        //icon visuals
+        pin_icon.setAttributeNS(null, "width", "32px");
+        pin_icon.setAttributeNS(null, "height", "32px");
+        pin_icon.setAttributeNS(null, "fill", '#000000');
+        pin_icon.setAttributeNS(null, "viewBox", '0 0 36 53');
+        pin_icon.setAttributeNS(null, "transform", 'scale(1.3, 1.3)');
+        //accessability considerations
+        pin_icon.setAttributeNS(null, "aria-hidden", "true");
+        pin_icon.setAttributeNS(null, "focusable", "false");
 
         const menus_divider = document.createElement('div');
         menus_divider.classList.add('header-link-divider');
@@ -97,7 +117,7 @@ export class SearchbarMenu {
         menu_link.appendChild(menu_icon);
         menu_link.appendChild(menu_label);
         this.menu = menu_link;
-        menu_pin.appendChild(menu_pin_label);
+        menu_pin.appendChild(pin_icon);
         this.toolbar_container.prepend(this.menu);
         this.toolbar_container.prepend(menus_divider);
         this.toolbar_container.prepend(menu_pin);
