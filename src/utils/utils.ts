@@ -40,3 +40,15 @@ export function sendMessage<T = any>(request: DMRequest): Promise<DMResponse<T>>
         }
     });
 }
+
+export async function constructSVGElement(path: string) {
+
+    const svg = document.createElementNS("http://www.w3.org/2000/svg", 'svg');
+    const svg_url = api.runtime.getURL(path);
+    const svg_file = await fetch(svg_url);
+    const svg_text = await svg_file.text();
+    const svg_pathel = new DOMParser().parseFromString(svg_text, 'image/svg+xml').querySelector('path');
+    const svg_path = svg_pathel?.cloneNode(true) as SVGPathElement;
+    svg.appendChild(svg_path);
+    return svg;
+}
