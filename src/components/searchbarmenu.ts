@@ -77,12 +77,6 @@ export class SearchbarMenu {
         })
         menu_pin.style.setProperty('padding-left', '2px');
         menu_pin.style.setProperty('padding-right', '2px');
-        //MENU PIN LABEL
-        const menu_pin_label = document.createElement('span');
-        menu_pin_label.textContent = "P";
-        menu_pin_label.style.setProperty('font-weight', '700');
-        menu_pin_label.style.setProperty('padding-left', '2px');
-        menu_pin_label.style.setProperty('padding-right', '2px');
 
         //MENU PIN SVG
         const pin_icon = document.createElementNS("http://www.w3.org/2000/svg", 'svg');
