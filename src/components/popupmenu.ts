@@ -3,7 +3,7 @@ import popupmenu_template_html from '../../assets/components/popupmenu_template.
 import popupmenu_template_css from '../../assets/components/popupmenu_template.css?inline';
 
 import type { DMMessageType, DMResponse, DMRequest } from '../types/ssa_types'
-import { constructStyleElement, genId, sendMessage } from '../utils/utils';
+import { constructStyleElement, genId, sendMessage, constructSVGElement } from '../utils/utils';
 
 import api from '../utils/api';
 import dm from './datamanager';
@@ -12,8 +12,13 @@ const tab_data_enum = ['userRules', 'userPinned', 'userRecent'];
 
 export interface PopupmenuState {
     isVisible: boolean,
-    template_name: string,
-    active_tab: number;
+    active_tab: number,
+    activeRules: { name: string, query: string }[],
+    positionX: number,
+    positionY: number,
+    width: number,
+    height: number
+
 }
 
 export class PopupMenu {
@@ -22,35 +27,70 @@ export class PopupMenu {
     private overlay: HTMLDivElement | null = null;
     private shadow: ShadowRoot | null = null;
 
-    private isVisible!: boolean;
-    private template_name!: string;
-    private active_tab!: number;
+    private isVisible: boolean = false;
+    private active_tab: number = 1;
+    private activeRules: { name: string, query: string }[] = [];
     private isResizing: boolean = false;
     private positionX = 512;
     private positionY = 64;
+    private width = 420;
+    private height = 400;
+
+    private savedState: PopupmenuState | null = null;
 
 
     private static readonly default_state: PopupmenuState = {
         isVisible: false,
-        template_name: "default_template",
         active_tab: 1,
+        activeRules: [],
+        positionX: 512,
+        positionY: 64,
+        width: 420,
+        height: 400
     };
 
-    constructor(partial_state?: Partial<PopupmenuState>) {
-        this.initState(partial_state);
+    constructor() {
         this.ensureTemplate();
-        //TODO: remember previous visibility state and show accordingly
         this.initShadowRoot();
     }
 
-    private initState(partial_state?: Partial<PopupmenuState>) {
+
+    public initState(partial_state?: Partial<PopupmenuState>) {
         const temp_state = { ...PopupMenu.default_state, ...partial_state } as PopupmenuState;
 
         this.isVisible = temp_state.isVisible;
-        this.template_name = temp_state.template_name;
         this.active_tab = temp_state.active_tab;
+        this.activeRules = temp_state.activeRules;
+        this.positionX = temp_state.positionX;
+        this.positionY = temp_state.positionY;
+        this.width = temp_state.width;
+        this.height = temp_state.height;
+
+        if (this.isVisible) {
+            this.show();
+        }
+
+        this.saveCurrentState();
     }
-    //TODO: function() = construct a Partial<PopupmenuState> to export/save
+
+
+    private createState(): PopupmenuState {
+        return {
+            isVisible: this.isVisible,
+            active_tab: this.active_tab,
+            activeRules: this.activeRules,
+            positionX: this.positionX,
+            positionY: this.positionY,
+            width: this.width,
+            height: this.height
+        }
+    }
+
+    private saveCurrentState() {
+        this.savedState = this.createState();
+        dm.set('popupSavedState', this.savedState);
+
+    }
 
     //TODO: this isn't popupmenu behavior so move it somewhere else
     //TODO: harden against tampering with the shadow root/DOM
@@ -78,7 +118,6 @@ export class PopupMenu {
             temp_container.innerHTML = `${popupmenu_template_html}`;
             template = document.body.appendChild(temp_container.firstElementChild!) as HTMLTemplateElement;
         }
-        //retrieve then store template in class attr
         this.template = template;
         return template;
     }
@@ -99,25 +138,41 @@ export class PopupMenu {
     private populatePopupShell(shell: HTMLDivElement) {
 
         //suppress other key events in search form
-        const main_search_form = shell.querySelector('#ssa-popup-searchform');
+        //TODO: fix catching the form submit so we can do our own search w/ rules
+        const main_search_form = shell.querySelector('#ssa-popup-searchform') as HTMLFormElement;
         if (main_search_form) {
-            main_search_form.addEventListener('keydown', haltEventPropogation, true);
+            main_search_form.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    haltEventPropogation(e);
+                    this.searchformSubmit();
+                }
+                else {
+                    haltEventPropogation(e);
+                }
+            }, true);
             main_search_form.addEventListener('keyup', haltEventPropogation, true);
             main_search_form.addEventListener('keypress', haltEventPropogation, true);
+            main_search_form.addEventListener('submit', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                this.searchformSubmit();
+            }, true);
         }
 
-        //
+        //TAB AREA AND TAB SWITCHHING BUTTONS
         const tab_buttons = shell.getElementsByClassName('popup-subtab-selector-btn');
         if (tab_buttons[this.active_tab]) {
             tab_buttons[this.active_tab]!.classList.add('popup-subtab-active-btn');
         }
         for (let i = 0; i <= tab_buttons.length; i++) {
             //TODO: make a function factory that maps i to tab_data_enum
-            tab_buttons[i]?.addEventListener('click', () => this.changeTab(i));
+            tab_buttons[i]?.addEventListener('click', async () => await this.changeTab(i));
         }
         if (!(this.active_tab < tab_data_enum.length)) { return; }
         this.populateTabArea(tab_data_enum[this.active_tab]!);
+        this.updateSearchbar();
 
+        //ADD EVENTS TO RESIZE HANDLES
         const resize_handles = shell.querySelectorAll('.ssa-footer-resize');
         resize_handles.forEach((item) => {
             const side = item.id === 'ssa-footer-resize-left' ? 'left' : 'right';
@@ -147,6 +202,7 @@ export class PopupMenu {
 
         }, this);
 
+        this.saveCurrentState();
 
     }
 
@@ -166,28 +222,37 @@ export class PopupMenu {
         }
 
         if (active >= tab_data_enum.length) { return; }
-        console.log(tab_data_enum[active]);
         await this.populateTabArea(tab_data_enum[active]!);
+
+        this.saveCurrentState();
     }
 
     private async populateTabArea(active: string) {
-        console.log(`pop active ${active}`);
-        //const tab_data_key = tab_data_enum[active] ?? 'userPinned';
-        const tab_data_key = 'userPinned'; //testing
-        //use DataManager to retrieve tab data (should be an array of entries to populate grid)
-        const tab_data = await dm.get(tab_data_key);
 
-        console.log(tab_data);
+        const tab_data_key = active ?? 'userPinned';
+        const tab_data = await dm.get(tab_data_key);
+        const subtab_area = this.shadow?.getElementById('ssa-popup-subtabarea-grid-outer');
+
+        //TODO: for Rules and UserPinned, add a button to create new entries
+
         if (tab_data) {
-            const subtab_area = this.shadow?.getElementById('ssa-popup-subtabarea-grid-outer');
             subtab_area?.replaceChildren();
 
-            for (let i = 0; i <= tab_data.length; i++) {
-
-                let new_item = createSubtabItem(tab_data[i]);
+            for (let i = 0; i < tab_data.length; i++) {
+                let new_item = this.createSubtabItem(active, tab_data[i]);
                 subtab_area?.appendChild(new_item);
             }
         }
+
+        const ghost_svg = await constructSVGElement('assets/icons/soul-icon.svg');
+        ghost_svg.id = 'subtab-area-bottom-icon';
+        ghost_svg.setAttributeNS(null, "width", "32px");
+        ghost_svg.setAttributeNS(null, "height", "32px");
+        ghost_svg.setAttributeNS(null, "aria-hidden", "true");
+        ghost_svg.setAttributeNS(null, "focusable", "false");
+        ghost_svg.setAttributeNS(null, "transform", "scale(4, -4)");
+        //ghost_svg.setAttributeNS(null, "transform", "translate(8, 12)");
+        subtab_area?.appendChild(ghost_svg);
     }
 
     public show(): void {
@@ -204,15 +269,23 @@ export class PopupMenu {
         this.overlay.appendChild(clone);
         const popup_shell = this.shadow.getElementById('ssa-popupmenu-wrapper') as HTMLDivElement;
         this.populatePopupShell(popup_shell);
+        const popup = this.overlay.querySelector('#ssa-popupmenu-outer-container-div') as HTMLDivElement;
+        popup.style.position = 'absolute';
+        popup.style.left = `${this.positionX}px`;
+        popup.style.top = `${this.positionY}px`;
+        popup.style.width = `${this.width}px`;
+        popup.style.height = `${this.height}px`;
 
         this.isVisible = true;
         this.focusSearchbar();
+        this.saveCurrentState();
     }
 
     public hide(): void {
         this.overlay?.remove();
         this.overlay = null;
         this.isVisible = false;
+        this.saveCurrentState();
     }
 
     public toggleVisibility(): string {
@@ -256,7 +329,7 @@ export class PopupMenu {
     public updatePosition() {
         if (!this.isVisible) { return; }
         const ref = document.getElementById('ssa-main-container-link');
-        const popup_wrapper = this.overlay?.querySelector('#ssa-popupmenu-wrapper') as HTMLDivElement;
+        const popup_wrapper = this.overlay?.querySelector('#ssa-popupmenu-outer-container-div') as HTMLDivElement;
 
         if (popup_wrapper && ref) {
             const rect = ref.getBoundingClientRect();
@@ -304,91 +377,168 @@ export class PopupMenu {
         newH = coords.startH + (e.clientY - coords.startY);
         newH = Math.min(Math.max(newH, minH), maxH);
 
-
         wrapper.style.width = `${newW}px`;
         wrapper.style.height = `${newH}px`;
+        this.width = newW;
+        this.height = newH;
 
         if (side === "left") {
             this.positionX = newX;
-            this.updatePosition();
         }
+        this.updatePosition();
+        console.log(`${this.positionX}, ${this.positionY}; ${this.width}, ${this.height}`);
 
         const subtab_area = wrapper.querySelector('#ssa-popup-subtabarea-grid-outer') as HTMLElement;
         void subtab_area?.offsetHeight;
-
     }
 
     public stopResize(listener1: (e: MouseEvent) => void, listener2: (e: MouseEvent) => void) {
         this.isResizing = false;
         document.removeEventListener('mousemove', listener1 as EventListenerOrEventListenerObject);
         document.removeEventListener('mouseup', listener2 as EventListenerOrEventListenerObject);
+        this.saveCurrentState();
     }
 
-}
-
-export function createSubtabItem(item_data: { name: string, query: string, tags: [string] }) {
-    const item = document.createElement('div');
-    item.classList.add('ssa-popup-subtabarea-item');
-    //const top_row = document.createElement('div');
-    //const bot_row = document.createElement('div');
-    //top_row.classList.add('ssa-popup-sta-item-toprow');
-    //bot_row.classList.add('ssa-popup-sta-item-botrow');
-
-    const title_span = document.createElement('span');
-    title_span.classList.add('ssa-sta-item-title');
-    title_span.innerHTML = item_data.name;
-    const query_span = document.createElement('span');
-    query_span.classList.add('ssa-sta-item-query');
-    query_span.innerHTML = item_data.query;
-
-    /*
-    const tags_span = document.createElement('span');
-    tags_span.classList.add('ssa-sta-item-tags');
-    if (item_data.tags.length > 0) {
-        tags_span.innerHTML += item_data.tags[0];
-        for (let i = 1; i < item_data.tags.length; i++) {
-            tags_span.innerHTML += " · " + item_data.tags[i];
+    public updateSearchbar() {
+        if (!this.shadow) { return; }
+        const container = this.shadow.querySelector('#popup-searchbar-container') as HTMLDivElement;
+        if (this.activeRules.length == 0) {
+            if (container.children.length == 2) {
+                container.removeChild(container.children[0]!);
+            }
+            return;
         }
-    } else {
-        tags_span.innerHTML = "untagged";
+
+        if (container.children.length == 2) {
+            const rules_link = container.children[0] as HTMLLinkElement;
+            rules_link.textContent = `${this.activeRules.length} `;
+        } else {
+            const rules_link = document.createElement('a');
+            rules_link.id = 'searchbar-rules-link';
+            rules_link.textContent = `${this.activeRules.length} `;
+            rules_link.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                this.changeTab(0);
+            });
+            console.log(rules_link);
+            container.prepend(rules_link);
+        }
     }
-    */
 
-    item.appendChild(title_span);
-    item.appendChild(query_span);
-    //item.appendChild(tags_span);
-    //
-    //
+    private createSubtabItem(type: string, item_data: { name: string, query: string, tags: [string] }) {
+        const item = document.createElement('div');
+        item.classList.add('ssa-popup-subtabarea-item');
+        //const top_row = document.createElement('div');
+        //const bot_row = document.createElement('div');
+        //top_row.classList.add('ssa-popup-sta-item-toprow');
+        //bot_row.classList.add('ssa-popup-sta-item-botrow');
+
+        const title_span = document.createElement('span');
+        title_span.classList.add('ssa-sta-item-title');
+        title_span.innerHTML = item_data.name;
+        const query_span = document.createElement('span');
+        query_span.classList.add('ssa-sta-item-query');
+        query_span.innerHTML = item_data.query;
+
+        /*
+        const tags_span = document.createElement('span');
+        tags_span.classList.add('ssa-sta-item-tags');
+        if (item_data.tags.length > 0) {
+            tags_span.innerHTML += item_data.tags[0];
+            for (let i = 1; i < item_data.tags.length; i++) {
+                tags_span.innerHTML += " · " + item_data.tags[i];
+            }
+        } else {
+            tags_span.innerHTML = "untagged";
+        }
+        */
+
+        item.appendChild(title_span);
+        item.appendChild(query_span);
+        //item.appendChild(tags_span);
+
+        if (type === 'userRules') {
+            if (this.activeRules.includes({ name: item_data.name, query: item_data.query })) {
+                item.classList.add('popup-active-rule-item');
+            }
+
+            item.addEventListener('click', (e) => {
+                const addedRule = this.toggleActiveRule({ name: item_data.name, query: item_data.query });
+                this.updateSearchbar();
+                if (addedRule) {
+                    item.classList.add('popup-active-rule-item');
+                } else {
+                    item.classList.remove('popup-active-rule-item');
+                }
+
+            })
+
+        } else if (type === 'userPinned' || type === 'userRecent') {
+
+            item.addEventListener('dblclick', (e) => {
+
+                const form = document.querySelector('.header-search') as HTMLFormElement;
+                const input = document.getElementById('header-search-field') as HTMLInputElement;
+                input.value = item_data.query;
+                form.submit();
+            });
+        }
 
 
-    item.addEventListener('dblclick', (e) => {
+        //logic for reconstructing all hidden input fields,
+        //TODO: allow user to mutate hidden fields
 
-        const form = document.querySelector('.header-search') as HTMLFormElement;
-        const input = document.getElementById('header-search-field') as HTMLInputElement;
-        input.value = item_data.query;
-        form.submit();
-    })
+        //const sc_unique = (document.getElementById('#unique') as HTMLInputElement)?.value ?? null;
+        //const sc_as = (document.getElementById('#as') as HTMLInputElement)?.value ?? null;
+        //const sc_order = (document.getElementById('#order') as HTMLInputElement)?.value ?? null;
 
+        //const search_obj = new URLSearchParams();
+        //search_obj.append("q", item_data.query);
+        //search_obj.append("unique", sc_unique);
+        //search_obj.append("as", sc_as);
+        //search_obj.append("order", sc_order);
 
-    //logic for reconstructing all hidden input fields,
-    //TODO: allow user to mutate hidden fields
-
-    //const sc_unique = (document.getElementById('#unique') as HTMLInputElement)?.value ?? null;
-    //const sc_as = (document.getElementById('#as') as HTMLInputElement)?.value ?? null;
-    //const sc_order = (document.getElementById('#order') as HTMLInputElement)?.value ?? null;
-
-    //const search_obj = new URLSearchParams();
-    //search_obj.append("q", item_data.query);
-    //search_obj.append("unique", sc_unique);
-    //search_obj.append("as", sc_as);
-    //search_obj.append("order", sc_order);
-
-    //const sc_input = document.querySelector('#header-search-field') as HTMLInputElement;
-    //sc_input.value = item_data.query;
+        //const sc_input = document.querySelector('#header-search-field') as HTMLInputElement;
+        //sc_input.value = item_data.query;
 
 
-    return item;
+        return item;
+    }
+
+    private toggleActiveRule(d: { name: string, query: string }): boolean {
+        for (let i = 0; i < this.activeRules.length; i++) {
+            if (d.name === this.activeRules[i]?.name) {
+                this.activeRules.splice(i, 1);
+                this.saveCurrentState();
+                return false;
+            }
+        }
+        this.activeRules.push(d);
+        this.saveCurrentState();
+        return true;
+    }
+
+    private searchformSubmit() {
+        const text_input = this.shadow?.querySelector('popup-searchbar-container')?.querySelector('input');
+        if (!text_input) { return; }
+
+        let value = `${text_input.value} `;
+        for (let i = 0; i < this.activeRules.length; i++) {
+            value += `${this.activeRules[i]?.query} `;
+        }
+
+        //const form = document.querySelector('.header-search') as HTMLFormElement;
+        //console.log(form);
+        //const input = document.getElementById('header-search-field') as HTMLInputElement;
+        //console.log(input);
+        //input.value = value;
+        console.log(value);
+        //form.submit();
+    }
+
 }
+
 
 const haltEventPropogation = (e: Event) => {
     e.stopPropagation();

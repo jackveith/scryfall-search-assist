@@ -162,19 +162,50 @@
 
 }
 
-#ssa-popup-searchform>input {
+#popup-searchbar-container {
+    display: flex;
+    flex: 1 0 8px;
+    flex-direction: row;
+    justify-content: flex-start;
+    width: 100%;
+    height: 100%;
+    background-color: #2b253a;
+
+}
+
+#searchbar-rules-link {
+    display: flex;
+    align-self: center;
+    align-items: center;
+    justify-content: center;
+    height: 32px;
+    width: 32px;
+    cursor: pointer;
+    margin-left: 8px;
+    margin-right: 4px;
+
+    font: 18px "Lato";
+    font-weight: 700;
+    outline: 2px solid #f77c34;
+    border-radius: 8px;
+    background: rgba(71, 63, 89, .8);
+    color: white;
+
+}
+
+#popup-searchbar-container>input {
     display: flex;
     flex: 1;
-    padding-left: 18px;
+    padding-left: 8px;
     color: rgb(253, 253, 253);
     font: 16px "Lato";
+    background-color: #2b253a;
     border: none;
     padding: none;
-    background-color: #2b253a;
 }
 
 
-#ssa-popup-searchform>input {
+#popup-searchbar-container>input {
     outline: none;
     box-shadow: none;
 }
@@ -270,11 +301,34 @@
     gap: 1px;
     width: 100%;
 
+    overflow-y: auto;
+
     padding: 4px 0px 4px;
     background-color: #2b253a;
     box-sizing: border-box;
 }
 
+
+#ssa-popup-subtabarea-grid-outer {
+    scrollbar-width: thin;
+    scrollbar-color: #f77c34 #2b253a;
+}
+
+#ssa-popup-subtabarea-grid-outer::-webkit-scrollbar {
+    width: 8px;
+}
+
+#ssa-popup-subtabarea-grid-outer ::-webkit-scrollbar-track {
+    background: #2b253a;
+}
+
+#ssa-popup-subtabarea-grid-outer ::-webkit-scrollbar-thumb {
+    background: #f77c34;
+}
+
+#ssa-popup-subtabarea-grid-outer ::-webkit-scrollbar-thumb:hover {
+    background: #ff8c4a;
+}
 
 .ssa-popup-subtabarea-item {
     display: flex;
@@ -291,6 +345,7 @@
     box-sizing: border-box;
 
     border-bottom: 1px solid darkgray;
+    z-index: 510;
 
     transition: all;
 }
@@ -298,8 +353,8 @@
 .ssa-popup-subtabarea-item:hover {
     outline: 2px solid #f77c34;
     background: #433c55;
-    z-index: 510;
-    border-color: transparent;
+    z-index: 520;
+    border-bottom: 1px solid transparent;
 
 }
 
@@ -312,6 +367,11 @@
     font: 20px "Lato";
     font-weight: 900;
     cursor: default;
+}
+
+.ssa-popup-subtabarea-item.popup-active-rule-item>.ssa-sta-item-title {
+    color: #f77c34;
+
 }
 
 .ssa-popup-subtabarea-item>.ssa-sta-item-query {
@@ -329,6 +389,10 @@
     cursor: default;
 }
 
+.popup-active-rule-item {
+    border-left: 8px solid #f77c34;
+}
+
 .ssa-popup-subtabarea-item>.ssa-sta-item-tags {
     display: flex;
     flex: 3 0 auto;
@@ -342,6 +406,20 @@
     color: #000000;
 
 }
+
+#subtab-area-bottom-icon {
+    display: flex;
+    flex: 0 1 auto;
+    fill: #f77c34;
+    align-self: center;
+    overflow: hidden;
+    z-index: 505;
+
+    justify-content: center;
+    align-items: center;
+
+}
+
 
 /* POPUP FOOTER */
 #ssa-popup-footer-container {
