@@ -173,6 +173,7 @@
 
 }
 
+/* RULES BUTTON SHOWING # ACTV RULES (IN SEARCHBAR) */
 #searchbar-rules-link {
     display: flex;
     align-self: center;
@@ -185,10 +186,10 @@
     margin-right: 4px;
 
     font: 18px "Lato";
-    font-weight: 700;
-    outline: 2px solid #f77c34;
+    font-weight: 900;
+    outline: 4px solid #f77c34;
     border-radius: 8px;
-    background: rgba(71, 63, 89, .8);
+    background: rgba(91, 75, 125, .8);
     color: white;
 
 }
@@ -217,7 +218,7 @@
     justify-content: stretch;
     align-items: stretch;
     width: 100%;
-    height: 30px;
+    height: 36px;
     background-color: #9D5A34;
 }
 
@@ -235,7 +236,7 @@
 }
 
 .popup-subtab-active-btn {
-    background-color: #f28343;
+    background-color: #f77c34;
     border-top-left-radius: 4px;
     border-top-right-radius: 4px;
     border-left: 1px solid white;
@@ -274,7 +275,7 @@
     font: 14px "Lato";
     border: none;
     padding: none;
-    background-color: #f28343;
+    background-color: #f77c34;
 }
 
 /* SUBTAB */
@@ -370,7 +371,7 @@
 }
 
 .ssa-popup-subtabarea-item.popup-active-rule-item>.ssa-sta-item-title {
-    color: #f77c34;
+    color: #f28b4f;
 
 }
 
@@ -390,7 +391,7 @@
 }
 
 .popup-active-rule-item {
-    border-left: 8px solid #f77c34;
+    border-left: 12px solid #f77c34;
 }
 
 .ssa-popup-subtabarea-item>.ssa-sta-item-tags {
