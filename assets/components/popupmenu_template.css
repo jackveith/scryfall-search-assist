@@ -247,7 +247,7 @@
 
 
 
-/* MAIN TEXT SEARCH FORM */
+/* FILTER SEARCH FORM */
 #ssa-popup-subtab-searchform-container {
     display: flex;
     flex-direction: row;
@@ -278,31 +278,34 @@
     background-color: #f77c34;
 }
 
-/* SUBTAB */
 #ssa-popup-subtab-searchform>input:focus {
     outline: 1px solid rgb(253, 253, 253);
     box-shadow: none;
     z-index: 520;
 }
 
+/* SUBTAB */
 #ssa-popup-subtabarea-container {
     display: flex;
-    flex: 1;
+    flex: 1 1 auto;
     flex-direction: row;
     justify-content: stretch;
+
+    min-height: 0;
 
     border-bottom: 2px solid #f77c34;
 }
 
 #ssa-popup-subtabarea-grid-outer {
     display: flex;
-    flex: 1;
+    flex: 1 1 auto;
     flex-direction: column;
     align-items: stretch;
     gap: 1px;
     width: 100%;
+    min-height: 0;
 
-    overflow-y: auto;
+    overflow-y: scroll;
 
     padding: 4px 0px 4px;
     background-color: #2b253a;
@@ -361,8 +364,8 @@
 
 .ssa-popup-subtabarea-create {
     display: flex;
-    flex: 1;
-    min-height: 32px;
+    flex: 1 1 auto;
+    min-height: 40px;
     max-height: 40px;
 
     flex-direction: column;
@@ -373,11 +376,12 @@
     background: #2b253a;
     padding: 2px 4px 6px;
     box-sizing: border-box;
+    z-index: 510;
 }
 
 .ssa-popup-subtabarea-create-inner {
     display: flex;
-    flex: 1;
+    flex: 1 1 auto;
     flex-direction: column;
     justify-content: center;
     align-items: center;
@@ -407,16 +411,19 @@
     flex: 1 1 auto;
     flex-direction: row;
     gap: 8px;
-    width: 100%;
+    min-width: 0;
+    max-width: 100%;
 }
 
 .subtab-item-edit-input-text {
-    flex: 1;
+    flex: 1 1 auto;
     border: 2px solid gray;
     background: #2b253a;
     color: white;
     font: 17px "Lato";
     box-sizing: border-box;
+
+    min-width: 0;
 
 }
 
@@ -425,6 +432,67 @@
     outline: none;
 }
 
+.subtab-item-edit-input-button {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    align-self: center;
+    min-height: 24px;
+    min-width: 24px;
+    max-height: 24px;
+    max-width: 24px;
+
+    border: 2px solid rgba(255, 255, 255, .8);
+    border-radius: 4px;
+    font: 20px "Lato";
+    font-weight: 900;
+    cursor: pointer;
+
+}
+
+.subtab-item-edit-input-submit {
+    color: #38c66d;
+    border: 2px solid #38c66d;
+}
+
+.subtab-item-edit-input-exit {
+    color: #e04747;
+    border: 2px solid #e04747;
+}
+
+.subtab-item-edit-options {
+    color: white;
+}
+
+.subtab-item-edit-delbtn {
+    color: #e04747;
+    border: 2px solid #e04747;
+    margin-right: 4px;
+}
+
+.subtab-item-edit-editbtn {
+    color: #e8c63e;
+    border: 2px solid #e8c63e;
+    margin-right: 4px;
+}
+
+.subtab-item-edit-fillbtn {
+    color: #38c66d;
+    border: 2px solid #38c66d;
+    margin-right: 4px;
+}
+
+.subtab-item-edit-input-submit:hover {
+    color: black;
+    background: rgba(93, 227, 139, .7);
+}
+
+.subtab-item-edit-input-exit:hover {
+    color: black;
+    background: rgba(240, 106, 106, .7);
+}
+
+/* SUBTAB ITEM FIELDS */
 .ssa-popup-subtabarea-item>.ssa-sta-item-title {
     display: flex;
     flex: 0 1 auto;

@@ -266,40 +266,61 @@ export class PopupMenu {
         ghost_svg.setAttributeNS(null, "aria-hidden", "true");
         ghost_svg.setAttributeNS(null, "focusable", "false");
         ghost_svg.setAttributeNS(null, "transform", "scale(4, -4)");
+        ghost_svg.style.minHeight = "32px";
+        ghost_svg.style.minHeight = "32px";
         //ghost_svg.setAttributeNS(null, "transform", "translate(8, 12)");
         subtab_area?.appendChild(ghost_svg);
     }
 
     private enterItemEditor(mode: string, tab: string, container: HTMLElement) {
 
+        const create_form = document.createElement('form');
+        create_form.classList.add('subtab-item-edit-form');
+        //text inputs
+        const create_input_title = document.createElement('input');
+        const create_input_query = document.createElement('input');
+        create_input_title.classList.add('subtab-item-edit-input-text');
+        create_input_query.classList.add('subtab-item-edit-input-text');
+        create_input_title.placeholder = 'Name...';
+        create_input_query.placeholder = tab === 'userRules' ? 'Rule Text...' : 'Query Text...';
+        //submit/exit buttons
+        const create_input_submit = document.createElement('a');
+        const create_input_exit = document.createElement('a');
+        create_input_submit.classList.add('subtab-item-edit-input-button');
+        create_input_exit.classList.add('subtab-item-edit-input-button');
+        create_input_submit.classList.add('subtab-item-edit-input-submit');
+        create_input_exit.classList.add('subtab-item-edit-input-exit');
+        create_input_submit.textContent = "↵";
+        create_input_exit.textContent = "✖";
+
+        if (mode === 'edit') {
+            const old_name = container.querySelector('.ssa-sta-item-title')?.textContent ?? "";
+            const old_query = container.querySelector('.ssa-sta-item-query')?.textContent ?? "";
+            console.log(`old: ${old_name}, ${old_query}`);
+            create_input_title.value = old_name;
+            create_input_query.value = old_query;
+
+            console.log(`filled: ${create_input_title.value}, ${create_input_query.value}`);
+        }
+
+        create_form.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                haltEventPropogation(e);
+                create_form.requestSubmit();
+            } else {
+                haltEventPropogation(e);
+            }
+        }, true);
+        create_form.addEventListener('keyup', haltEventPropogation, true);
+        create_form.addEventListener('keypress', haltEventPropogation, true);
+
         if (mode === 'create') {
-            container.replaceChildren();
-            const create_form = document.createElement('form');
-            create_form.classList.add('subtab-item-edit-form');
-            const create_input_title = document.createElement('input');
-            const create_input_query = document.createElement('input');
-            create_input_title.classList.add('subtab-item-edit-input-text');
-            create_input_query.classList.add('subtab-item-edit-input-text');
-            create_input_title.placeholder = 'Name...';
-            create_input_query.placeholder = 'Rule Text...';
-
-            //TODO: submit button: [->], cancel button: [X]
-            //[  inp1  ][  inp2  ][->][X]
-            create_form.addEventListener('keydown', (e) => {
-                if (e.key === 'Enter') {
-                    haltEventPropogation(e);
-                    create_form.requestSubmit();
-                } else { haltEventPropogation(e); }
-            }, true);
-            create_form.addEventListener('keyup', haltEventPropogation, true);
-            create_form.addEventListener('keypress', haltEventPropogation, true);
-
             create_form.addEventListener('submit', async (e) => {
                 e.preventDefault();
                 if (create_input_title.value === "" || create_input_query.value === "") { return; }
 
-                const store = tab === 'userRules' ? 'userRules' : 'userPinned';
-                const id_prefix = store === 'userRules' ? 'rul_' : 'pin_';
+                const store = tab === 'userRules' ? 'userRules' : tab === 'userPinned' ? 'userPinned' : 'userRecent';
+                const id_prefix = store === 'userRules' ? 'rul_' : store === 'userPinned' ? 'pin_' : 'rec_';
                 const new_item_id = genId(id_prefix);
                 let tab_data = await dm.get(store);
                 if (!tab_data) {
@@ -316,13 +337,89 @@ export class PopupMenu {
                 this.populateTabArea(tab);
             });
 
-            create_form.appendChild(create_input_title);
-            create_form.appendChild(create_input_query);
-            container.prepend(create_form);
+            create_input_exit.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                const create_button_inner = document.createElement('div');
+                create_button_inner.classList.add('ssa-popup-subtabarea-create-inner');
+                const create_button_text = document.createElement('span');
+                create_button_text.classList.add('ssa-popup-subtabarea-create-text');
+                create_button_text.textContent = "+";
 
-            create_input_title.focus();
+                create_button_inner.addEventListener('click', async (e) => {
+                    this.enterItemEditor('create', tab_data_enum[this.active_tab]!, container);
+                });
 
+                create_button_inner.appendChild(create_button_text);
+                container.replaceChildren(create_button_inner);
+            });
+        } else if (mode === 'edit') {
+            create_form.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                if (create_input_title.value === "" || create_input_query.value === "") { return; }
+
+                const store = tab === 'userRules' ? 'userRules' : tab === 'userPinned' ? 'userPinned' : 'userRecent';
+                let tab_data = await dm.get(store);
+                const item_id = container.dataset.ssaItemId!;
+                const new_name = create_input_title.value;
+                const new_query = create_input_query.value;
+                const constructed_item = {
+                    id: item_id,
+                    name: new_name,
+                    query: new_query,
+                    tags: ['']
+                }
+                for (let i = 0; i < tab_data.length; i++) {
+                    if (tab_data[i].id === item_id) {
+                        constructed_item.tags = tab_data[i].tags!;
+                        tab_data[i] = constructed_item;
+                        break;
+                    }
+                }
+                await dm.set(store, tab_data);
+                if (tab === 'userRules') {
+                    if (item_id in this.activeRules) {
+                        delete this.activeRules[item_id];
+                        this.updateSearchbar();
+                    }
+                }
+                const updated_subtab_item = this.createSubtabItem(store, constructed_item);
+                container.parentElement?.insertBefore(updated_subtab_item, container);
+                container.remove();
+
+            });
+
+            create_input_exit.addEventListener('click', async (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                console.log(tab);
+                let tab_data = await dm.get(tab);
+                const item_id = container.dataset.ssaItemId!;
+                console.log(item_id);
+                const old_data = tab_data.find((it: { id: string, name: string, query: string, tags: string[] }) => it.id === item_id);
+                console.log(old_data);
+                const remade_item = this.createSubtabItem(tab, old_data);
+                container.parentElement?.insertBefore(remade_item, container);
+                container.remove();
+
+            })
         }
+
+        create_input_submit.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            create_form.requestSubmit();
+        });
+
+        container.replaceChildren();
+        create_form.appendChild(create_input_title);
+        create_form.appendChild(create_input_query);
+        create_form.appendChild(create_input_submit);
+        create_form.appendChild(create_input_exit);
+        container.prepend(create_form);
+
+        create_input_title.focus();
+
 
     }
 
@@ -501,9 +598,10 @@ export class PopupMenu {
         }
     }
 
-    private createSubtabItem(type: string, item_data: { id: string, name: string, query: string, tags: [string] }) {
+    private createSubtabItem(type: string, item_data: { id: string, name: string, query: string, tags: string[] }) {
         const item = document.createElement('div');
         item.classList.add('ssa-popup-subtabarea-item');
+        item.dataset.ssaItemId = item_data.id;
         //const top_row = document.createElement('div');
         //const bot_row = document.createElement('div');
         //top_row.classList.add('ssa-popup-sta-item-toprow');
@@ -533,6 +631,98 @@ export class PopupMenu {
         item.appendChild(query_span);
         //item.appendChild(tags_span);
 
+        //OPTIONS BUTTONS
+        const options_button = document.createElement('a');
+        options_button.textContent = "⚙︎";
+        options_button.classList.add('subtab-item-edit-input-button', 'subtab-item-edit-options');
+        const expand_options_listener = (e: PointerEvent) => {
+            e.preventDefault();
+            e.stopPropagation();
+            //change option button icon/behavior
+            options_button.textContent = "⮞";
+            options_button.removeEventListener('click', expand_options_listener);
+            options_button.addEventListener('click', (ev) => {
+                ev.preventDefault();
+                ev.stopPropagation();
+                const opts_buttons = item.querySelectorAll('.subtab-item-edit-input-button');
+                opts_buttons.forEach((button) => {
+                    if (!button.classList.contains('subtab-item-edit-options')) {
+                        button.remove();
+                    } else {
+                        button.textContent = "⚙︎";
+                        button.addEventListener('click', (ev) => expand_options_listener(ev as PointerEvent));
+                    }
+                });
+
+
+            });
+
+            //make delete, edit, fill buttons
+            const delete_button = document.createElement('a');
+            const edit_button = document.createElement('a');
+            const fill_button = document.createElement('a');
+
+            delete_button.classList.add('subtab-item-edit-input-button', 'subtab-item-edit-delbtn');
+            edit_button.classList.add('subtab-item-edit-input-button', 'subtab-item-edit-editbtn');
+            fill_button.classList.add('subtab-item-edit-input-button', 'subtab-item-edit-fillbtn');
+
+            delete_button.textContent = "✖";
+            edit_button.textContent = "✏";
+            fill_button.textContent = "⤒";
+
+            delete_button.addEventListener('click', async (ev) => {
+                ev.preventDefault();
+                ev.stopPropagation();
+
+                const tab_data = await dm.get(type);
+                const rm_id = item.dataset.ssaItemId!;
+                for (let i = 0; i < tab_data.length; i++) {
+                    if (tab_data[i].id === rm_id) {
+                        tab_data.splice(i, 1);
+                        break;
+                    }
+                }
+                if (type === 'userRules') {
+                    if (rm_id in this.activeRules) {
+                        delete this.activeRules[rm_id];
+                        this.updateSearchbar();
+                    }
+                }
+                item.remove();
+                this.populateTabArea(type);
+            });
+
+            edit_button.addEventListener('click', (ev) => {
+                ev.preventDefault();
+                ev.stopPropagation();
+
+                this.enterItemEditor('edit', type, item);
+            })
+
+            fill_button.addEventListener('click', (ev) => {
+                ev.preventDefault();
+                ev.stopPropagation();
+                const sb = this.shadow?.querySelector('#popup-searchbar-input') as HTMLInputElement;
+                const q_text = query_span.textContent;
+                sb.value += ` ${q_text}`;
+
+                options_button.click();
+
+            });
+
+
+            item.insertBefore(delete_button, options_button);
+            item.insertBefore(edit_button, options_button);
+            item.insertBefore(fill_button, options_button);
+
+
+        }
+        options_button.addEventListener('click', expand_options_listener);
+        item.appendChild(options_button);
+
+
+
+
         if (type === 'userRules') {
             if (item_data.id in this.activeRules) {
                 item.classList.add('popup-active-rule-item');
@@ -546,7 +736,6 @@ export class PopupMenu {
                 } else {
                     item.classList.remove('popup-active-rule-item');
                 }
-
             })
 
         } else if (type === 'userPinned' || type === 'userRecent') {
