@@ -265,6 +265,9 @@ export class PopupMenu {
         const tab_data_key = active ?? 'userPinned';
         const tab_data = await dm.get(tab_data_key);
         const subtab_area = this.shadow?.getElementById('ssa-popup-subtabarea-grid-outer') ?? null;
+        const most_recent_state = await dm.get('popupSavedState');
+        this.activeRules = most_recent_state.activeRules;
+        this.updateSearchbar();
 
         //TODO: for Rules and UserPinned, add a button to create new entries
 
