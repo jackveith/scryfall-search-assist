@@ -1,0 +1,50 @@
+{
+    "manifest_version": 3,
+    "name": "Scryfall Search Assist",
+    "version": "0.1",
+    "description": "Enhances Scryfall search with saved queries and advanced query builder tools.",
+    "permissions": [
+        "storage",
+        "scripting",
+        "activeTab"
+    ],
+    "host_permissions": [
+        "https://scryfall.com/*"
+    ],
+    "web_accessible_resources": [
+        {
+            "resources": [
+                "assets/*.svg"
+            ],
+            "matches": [
+                "<all_urls>"
+            ]
+        }
+    ],
+    "background": {
+        "scripts": [
+            "dist/background.js"
+        ]
+    },
+    "action": {
+        "default_popup": "src/popup/popup.html",
+        "default_icon": "assets/icon.png"
+    },
+    "content_scripts": [
+        {
+            "matches": [
+                "https://scryfall.com/*"
+            ],
+            "exclude_matches": [
+                "https://scryfall.com/"
+            ],
+            "js": [
+                "dist/content.js"
+            ]
+        }
+    ],
+    "options_ui": {
+        "page": "src/options/options.html",
+        "open_in_tab": true
+    }
+}
