@@ -52,3 +52,14 @@ export async function constructSVGElement(path: string) {
     svg.appendChild(svg_path);
     return svg;
 }
+
+export function getDeepActiveElement() {
+    let active = document.activeElement;
+
+    // Traverse through shadow roots
+    while (active && active.shadowRoot && active.shadowRoot.activeElement) {
+        active = active.shadowRoot.activeElement;
+    }
+
+    return active;
+}
