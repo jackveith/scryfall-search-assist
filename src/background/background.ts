@@ -20,6 +20,7 @@ function handleMessage(request: DMRequest, sender: any, sendResponse: (r: any) =
                 }
                 case 'DM_SET': {
                     await api?.storage.local.set({ [request.key!]: request.value });
+                    broadcastUpdate(request.key!, request.value);
                     sendResponse({ id: request.id, ok: true });
                     break;
                 }
@@ -36,7 +37,25 @@ function handleMessage(request: DMRequest, sender: any, sendResponse: (r: any) =
     //indicate we will call sendResponse asynchronously
     return true;
 }
+async function broadcastUpdate(key: string, value: any) {
+    const bcast = { id: genId('bcast_'), type: 'DM_BROADCAST' as DMMessageType, key: key, value: value };
+    const tabs = await api.tabs.query({});
+    for (const tab of tabs) {
+        if (tab.id) {
+            try {
+                await api.tabs.sendMessage(tab.id, bcast);
+            } catch (err) {
+                //tab doesnt have content script loaded
+            }
+        }
+    }
+}
+
+
+
+function genId(prefix = '') {
+    return prefix + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+}
 
 api?.runtime.onMessage.addListener(handleMessage);
 
-console.log('background script?');

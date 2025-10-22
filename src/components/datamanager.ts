@@ -29,6 +29,7 @@ class DataManager {
 
         const messageHandler = (message: any, sender: any, sendResponse: any) => {
             try {
+                console.log(message);
                 //check if message?, if BROADCAST or for us, and key?
                 if (message && (message.type === 'DM_BROADCAST' || (message.recipient && message.recipient == this.contextName))
                     && message.key !== undefined) {

@@ -451,8 +451,6 @@ export class PopupMenu {
         container.prepend(create_form);
 
         create_input_title.focus();
-
-
     }
 
     public show(): void {
@@ -719,7 +717,9 @@ export class PopupMenu {
                         this.updateSearchbar();
                     }
                 }
+                await dm.set(type, tab_data);
                 item.remove();
+                this.saveCurrentState();
                 this.populateTabArea(type);
             });
 
