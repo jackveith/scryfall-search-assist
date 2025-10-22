@@ -105,24 +105,23 @@ async function testDBManager() {
     if (already_init) { return; }
 
 
-    await dm.set('userPinned', [
-        { id: genId('pin_'), name: 'First', query: 'ci<=bg mv=3', tags: ['t1', 't2'] },
-        { id: genId('pin_'), name: 'Second', query: 'ci<=temur t:creature legal:edh Fierce Emp', tags: ['t3', 't4'] },
-        { id: genId('pin_'), name: 'Third', query: 'ci=temur t:legend t:creature', tags: ['t3', 't4'] },
-    ]);
-    await dm.set('userRules', [
-        { id: genId('rul_'), name: 'Golgari', query: 'ci<=bg', tags: ['t1', 't2'] },
-        { id: genId('rul_'), name: 'Temur', query: 'ci<=temur', tags: ['t3', 't4'] },
-        { id: genId('rul_'), name: 'Cheap', query: 'mv<=3', tags: ['t3', 't4'] },
-        { id: genId('rul_'), name: 'EDH', query: 'legal:edh', tags: ['t1', 't2'] },
-        { id: genId('rul_'), name: 'Historic', query: 'is:historic', tags: ['t3', 't4'] },
-        { id: genId('rul_'), name: 'Mentions treasures', query: 'fo:treasure', tags: ['t3', 't4'] },
-    ]);
-    await dm.set('userRecent', [
-        { id: genId('rec_'), name: 'First', query: 'ci<=bg mv=3', tags: ['t1', 't2'] },
-        { id: genId('rec_'), name: 'Second', query: 'ci<=temur t:creature legal:edh Fierce Emp', tags: ['t3', 't4'] },
-        { id: genId('rec_'), name: 'Third', query: 'ci=temur t:legend t:creature', tags: ['t3', 't4'] },
-    ]);
+    const has_pinned = await dm.get('userPinned');
+    if (!has_pinned) {
+        await dm.set('userPinned', [
+            { id: genId('pin_'), name: 'SSA', query: '!\"Smoke Spirits Aid\" cn=62', tags: [] },
+        ]);
+    }
+    const has_rules = await dm.get('userRules');
+    if (!has_rules) {
+        await dm.set('userRules', [
+            { id: genId('rul_'), name: 'EDH', query: 'legal:edh', tags: [] },
+        ]);
+    }
+    const has_recents = await dm.get('userRecent');
+    if (!has_recents) {
+        await dm.set('userRecent', [
+        ]);
+    }
 
     await dm.set('testInitCompleted', true);
 }
