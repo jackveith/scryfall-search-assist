@@ -19,7 +19,6 @@ function attachWindowEvents() {
         //SHIFT-F shortcut
         if (e.shiftKey && e.key === 'F') {
             e.preventDefault();
-            e.stopPropagation();
             if (!popupmenu.getIsVisible()) {
                 popupmenu.toggleVisibility();
             }
@@ -29,7 +28,6 @@ function attachWindowEvents() {
         //SHIFT-R shortcut
         else if (e.shiftKey && e.key === 'R') {
             e.preventDefault();
-            e.stopPropagation();
             if (!popupmenu.getIsVisible()) {
                 popupmenu.toggleVisibility();
             }
@@ -57,24 +55,31 @@ function analyzeWindowLocation() {
 }
 
 async function testDBManager() {
+
+    const already_init = await dm.get('testInitCompleted', { force: true }) ?? false;
+    if (already_init) { return; }
+
+
     await dm.set('userPinned', [
         { name: 'First', query: 'ci<=bg mv=3', tags: ['t1', 't2'] },
         { name: 'Second', query: 'ci<=temur t:creature legal:edh Fierce Emp', tags: ['t3', 't4'] },
         { name: 'Third', query: 'ci=temur t:legend t:creature', tags: ['t3', 't4'] },
     ]);
     await dm.set('userRules', [
-        { name: 'Golgari', query: 'ci<=bg', tags: ['t1', 't2'] },
-        { name: 'Temur', query: 'ci<=temur', tags: ['t3', 't4'] },
-        { name: 'Cheap', query: 'mv<=3', tags: ['t3', 't4'] },
-        { name: 'Golgari', query: 'ci<=bg', tags: ['t1', 't2'] },
-        { name: 'Temur', query: 'ci<=temur', tags: ['t3', 't4'] },
-        { name: 'Cheap', query: 'mv<=3', tags: ['t3', 't4'] },
+        { id: genId(), name: 'Golgari', query: 'ci<=bg', tags: ['t1', 't2'] },
+        { id: genId(), name: 'Temur', query: 'ci<=temur', tags: ['t3', 't4'] },
+        { id: genId(), name: 'Cheap', query: 'mv<=3', tags: ['t3', 't4'] },
+        { id: genId(), name: 'EDH', query: 'legal:edh', tags: ['t1', 't2'] },
+        { id: genId(), name: 'Historic', query: 'is:historic', tags: ['t3', 't4'] },
+        { id: genId(), name: 'Mentions treasures', query: 'fo:treasure', tags: ['t3', 't4'] },
     ]);
     await dm.set('userRecent', [
         { name: 'First', query: 'ci<=bg mv=3', tags: ['t1', 't2'] },
         { name: 'Second', query: 'ci<=temur t:creature legal:edh Fierce Emp', tags: ['t3', 't4'] },
         { name: 'Third', query: 'ci=temur t:legend t:creature', tags: ['t3', 't4'] },
     ]);
+
+    await dm.set('testInitCompleted', true);
 }
 
 async function injectUI() {
