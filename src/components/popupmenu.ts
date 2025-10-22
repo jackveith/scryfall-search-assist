@@ -13,7 +13,7 @@ const tab_data_enum = ['userRules', 'userPinned', 'userRecent'];
 export interface PopupmenuState {
     isVisible: boolean,
     active_tab: number,
-    activeRules: { name: string, query: string }[],
+    activeRules: { [id: string]: { name: string, query: string } };
     positionX: number,
     positionY: number,
     width: number,
@@ -29,7 +29,7 @@ export class PopupMenu {
 
     private isVisible: boolean = false;
     private active_tab: number = 1;
-    private activeRules: { name: string, query: string }[] = [];
+    private activeRules: { [id: string]: { name: string, query: string } } = {};
     private isResizing: boolean = false;
     private positionX = 512;
     private positionY = 64;
@@ -42,7 +42,7 @@ export class PopupMenu {
     private static readonly default_state: PopupmenuState = {
         isVisible: false,
         active_tab: 1,
-        activeRules: [],
+        activeRules: {},
         positionX: 512,
         positionY: 64,
         width: 420,
@@ -89,7 +89,6 @@ export class PopupMenu {
     private saveCurrentState() {
         this.savedState = this.createState();
         dm.set('popupSavedState', this.savedState);
-
     }
 
     //TODO: this isn't popupmenu behavior so move it somewhere else
@@ -141,10 +140,12 @@ export class PopupMenu {
         //TODO: fix catching the form submit so we can do our own search w/ rules
         const main_search_form = shell.querySelector('#ssa-popup-searchform') as HTMLFormElement;
         if (main_search_form) {
+            main_search_form.addEventListener('click', () => this.focusSearchbar());
             main_search_form.addEventListener('keydown', (e) => {
                 if (e.key === 'Enter') {
                     haltEventPropogation(e);
-                    this.searchformSubmit();
+                    console.log('form keydown');
+                    main_search_form.requestSubmit();
                 }
                 else {
                     haltEventPropogation(e);
@@ -155,6 +156,7 @@ export class PopupMenu {
             main_search_form.addEventListener('submit', (e) => {
                 e.preventDefault();
                 e.stopPropagation();
+                console.log('form submit');
                 this.searchformSubmit();
             }, true);
         }
@@ -190,20 +192,15 @@ export class PopupMenu {
                 }
                 this.isResizing = true;
 
-                console.log(this);
                 const cb_resize = (e: MouseEvent) => this.resize(e, wrapper, coords, side);
                 const cb_stopResize = (e: MouseEvent) => this.stopResize(cb_resize, cb_stopResize);
-
-
                 document.addEventListener('mousemove', cb_resize);
                 document.addEventListener('mouseup', cb_stopResize);
-
             })
 
         }, this);
 
         this.saveCurrentState();
-
     }
 
     //TODO: make this based on a string enum ['Rules', 'Pinned', 'Recents']
@@ -231,7 +228,7 @@ export class PopupMenu {
 
         const tab_data_key = active ?? 'userPinned';
         const tab_data = await dm.get(tab_data_key);
-        const subtab_area = this.shadow?.getElementById('ssa-popup-subtabarea-grid-outer');
+        const subtab_area = this.shadow?.getElementById('ssa-popup-subtabarea-grid-outer') ?? null;
 
         //TODO: for Rules and UserPinned, add a button to create new entries
 
@@ -316,11 +313,10 @@ export class PopupMenu {
         if (!this.overlay) { return; }
 
         const search_form = this.overlay.querySelector('#ssa-popup-searchform') as HTMLFormElement;
-        const search_input = search_form.elements[0] as HTMLInputElement;
+        const search_input = search_form.querySelector('#popup-searchbar-input') as HTMLInputElement;
         if (search_input) {
             search_input.focus();
         }
-
     }
 
 
@@ -362,10 +358,14 @@ export class PopupMenu {
             // When dragging left, width increases as e.clientX decreases
             const deltaX = e.clientX - bounding_rect.left;
             newW = bounding_rect.width - deltaX;
-            //clamp
             newW = Math.min(Math.max(newW, minW), maxW);
             // Move X so that right side stays still
-            if (newW > minW) {
+            //TODO: if the resize ends up at minW or maxW,
+            //do math to ensure that the position is correct if the mouse
+            //moved farther than a few units (currently snaps strangely)
+            if (newW == maxW && bounding_rect.width == maxW) {
+                //dont change the position if resizing maxWidth popup
+            } else if (newW > minW) {
                 newX = this.positionX + deltaX;
             } else {
                 const w_dif = bounding_rect.width - newW;
@@ -402,7 +402,9 @@ export class PopupMenu {
     public updateSearchbar() {
         if (!this.shadow) { return; }
         const container = this.shadow.querySelector('#popup-searchbar-container') as HTMLDivElement;
-        if (this.activeRules.length == 0) {
+        const active_rules_len = Object.keys(this.activeRules).length;
+        //TODO: make this more robust than using indices, for when structure becomes more complex
+        if (active_rules_len == 0) {
             if (container.children.length == 2) {
                 container.removeChild(container.children[0]!);
             }
@@ -411,22 +413,21 @@ export class PopupMenu {
 
         if (container.children.length == 2) {
             const rules_link = container.children[0] as HTMLLinkElement;
-            rules_link.textContent = `${this.activeRules.length} `;
+            rules_link.textContent = `${active_rules_len}`;
         } else {
             const rules_link = document.createElement('a');
             rules_link.id = 'searchbar-rules-link';
-            rules_link.textContent = `${this.activeRules.length} `;
+            rules_link.textContent = `${active_rules_len}`;
             rules_link.addEventListener('click', (e) => {
                 e.preventDefault();
                 e.stopPropagation();
                 this.changeTab(0);
             });
-            console.log(rules_link);
             container.prepend(rules_link);
         }
     }
 
-    private createSubtabItem(type: string, item_data: { name: string, query: string, tags: [string] }) {
+    private createSubtabItem(type: string, item_data: { id: string, name: string, query: string, tags: [string] }) {
         const item = document.createElement('div');
         item.classList.add('ssa-popup-subtabarea-item');
         //const top_row = document.createElement('div');
@@ -459,12 +460,12 @@ export class PopupMenu {
         //item.appendChild(tags_span);
 
         if (type === 'userRules') {
-            if (this.activeRules.includes({ name: item_data.name, query: item_data.query })) {
+            if (item_data.id in this.activeRules) {
                 item.classList.add('popup-active-rule-item');
             }
 
             item.addEventListener('click', (e) => {
-                const addedRule = this.toggleActiveRule({ name: item_data.name, query: item_data.query });
+                const addedRule = this.toggleActiveRule({ id: item_data.id, name: item_data.name, query: item_data.query });
                 this.updateSearchbar();
                 if (addedRule) {
                     item.classList.add('popup-active-rule-item');
@@ -506,35 +507,40 @@ export class PopupMenu {
         return item;
     }
 
-    private toggleActiveRule(d: { name: string, query: string }): boolean {
-        for (let i = 0; i < this.activeRules.length; i++) {
-            if (d.name === this.activeRules[i]?.name) {
-                this.activeRules.splice(i, 1);
-                this.saveCurrentState();
-                return false;
-            }
+    //toggles given rule in the activeRule list; returns true on append, false on remove
+    private toggleActiveRule(d: { id: string, name: string, query: string }): boolean {
+        const active_rules_len = Object.keys(this.activeRules).length;
+        if (active_rules_len > 0 && d.id in this.activeRules) {
+            //remove rule
+            delete this.activeRules[d.id];
+            this.saveCurrentState();
+            return false;
         }
-        this.activeRules.push(d);
+        //insert rule
+        this.activeRules[d.id] = { name: d.name, query: d.query };
         this.saveCurrentState();
         return true;
     }
 
     private searchformSubmit() {
-        const text_input = this.shadow?.querySelector('popup-searchbar-container')?.querySelector('input');
+        console.log('form innersub');
+        const text_input = this.shadow?.querySelector('#popup-searchbar-input') as HTMLInputElement;
         if (!text_input) { return; }
 
         let value = `${text_input.value} `;
-        for (let i = 0; i < this.activeRules.length; i++) {
-            value += `${this.activeRules[i]?.query} `;
+        let rules_str = '';
+        for (let [rule_id, rule_data] of Object.entries(this.activeRules)) {
+            rules_str += `${rule_data.query} `;
         }
+        value = rules_str + value;
 
-        //const form = document.querySelector('.header-search') as HTMLFormElement;
-        //console.log(form);
-        //const input = document.getElementById('header-search-field') as HTMLInputElement;
-        //console.log(input);
-        //input.value = value;
+        const form = document.querySelector('.header-search') as HTMLFormElement;
+        console.log(form);
+        const input = document.getElementById('header-search-field') as HTMLInputElement;
+        console.log(input);
+        input.value = value;
         console.log(value);
-        //form.submit();
+        form.submit();
     }
 
 }
