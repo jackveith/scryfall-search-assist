@@ -31,6 +31,7 @@ export class PopupMenu {
     private active_tab: number = 1;
     private activeRules: { [id: string]: { name: string, query: string } } = {};
     private isResizing: boolean = false;
+    private isRepositioning: boolean = false;
     private positionX = 512;
     private positionY = 64;
     private width = 420;
@@ -144,7 +145,6 @@ export class PopupMenu {
             main_search_form.addEventListener('keydown', (e) => {
                 if (e.key === 'Enter') {
                     haltEventPropogation(e);
-                    console.log('form keydown');
                     main_search_form.requestSubmit();
                 }
                 else {
@@ -156,7 +156,6 @@ export class PopupMenu {
             main_search_form.addEventListener('submit', (e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                console.log('form submit');
                 this.searchformSubmit();
             }, true);
         }
@@ -182,8 +181,8 @@ export class PopupMenu {
                 e.preventDefault();
                 const mouse_e = (e as MouseEvent);
                 const wrapper = shell.querySelector('#ssa-popupmenu-outer-container-div') as HTMLDivElement;
-                console.log(wrapper);
                 if (!wrapper) { return; }
+
                 const coords = {
                     startX: mouse_e.clientX,
                     startY: mouse_e.clientY,
@@ -200,6 +199,44 @@ export class PopupMenu {
 
         }, this);
 
+        const reposition_handle = shell.querySelector('#ssa-footer-positioner') as HTMLDivElement;
+        reposition_handle.addEventListener('mousedown', (e) => {
+            e.preventDefault();
+            const wrapper = shell.querySelector('#ssa-popupmenu-outer-container-div') as HTMLDivElement;
+            if (!wrapper) { return; }
+            const coords = {
+                startX: e.clientX,
+                startY: e.clientY,
+                popupX: this.positionX,
+                popupY: this.positionY
+            };
+            this.isRepositioning = true;
+
+            const cb_reposition = (e: MouseEvent) => this.reposition(e, wrapper, coords);
+            const cb_stopReposition = (e: MouseEvent) => this.stopReposition(cb_reposition, cb_stopReposition);
+            document.addEventListener('mousemove', cb_reposition);
+            document.addEventListener('mouseup', cb_stopReposition);
+        })
+
+        this.saveCurrentState();
+    }
+
+    private reposition(e: MouseEvent, wrapper: HTMLDivElement, coords: { startX: number, startY: number, popupX: number, popupY: number }) {
+
+        if (!this.isRepositioning) { return; }
+
+        const deltaX = e.clientX - coords.startX;
+        const deltaY = e.clientY - coords.startY;
+        this.positionX = coords.popupX + deltaX;
+        this.positionY = coords.popupY + deltaY;
+
+        this.updatePosition();
+    }
+
+    private stopReposition(listener1: (e: MouseEvent) => void, listener2: (e: MouseEvent) => void) {
+        this.isRepositioning = false;
+        document.removeEventListener('mousemove', listener1 as EventListenerOrEventListenerObject);
+        document.removeEventListener('mouseup', listener2 as EventListenerOrEventListenerObject);
         this.saveCurrentState();
     }
 
@@ -296,11 +333,8 @@ export class PopupMenu {
         if (mode === 'edit') {
             const old_name = container.querySelector('.ssa-sta-item-title')?.textContent ?? "";
             const old_query = container.querySelector('.ssa-sta-item-query')?.textContent ?? "";
-            console.log(`old: ${old_name}, ${old_query}`);
             create_input_title.value = old_name;
             create_input_query.value = old_query;
-
-            console.log(`filled: ${create_input_title.value}, ${create_input_query.value}`);
         }
 
         create_form.addEventListener('keydown', (e) => {
@@ -392,17 +426,15 @@ export class PopupMenu {
             create_input_exit.addEventListener('click', async (e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                console.log(tab);
+
                 let tab_data = await dm.get(tab);
                 const item_id = container.dataset.ssaItemId!;
-                console.log(item_id);
                 const old_data = tab_data.find((it: { id: string, name: string, query: string, tags: string[] }) => it.id === item_id);
-                console.log(old_data);
+
                 const remade_item = this.createSubtabItem(tab, old_data);
                 container.parentElement?.insertBefore(remade_item, container);
                 container.remove();
-
-            })
+            });
         }
 
         create_input_submit.addEventListener('click', (e) => {
@@ -557,7 +589,6 @@ export class PopupMenu {
             this.positionX = newX;
         }
         this.updatePosition();
-        console.log(`${this.positionX}, ${this.positionY}; ${this.width}, ${this.height}`);
 
         const subtab_area = wrapper.querySelector('#ssa-popup-subtabarea-grid-outer') as HTMLElement;
         void subtab_area?.offsetHeight;
@@ -786,7 +817,6 @@ export class PopupMenu {
     }
 
     private searchformSubmit() {
-        console.log('form innersub');
         const text_input = this.shadow?.querySelector('#popup-searchbar-input') as HTMLInputElement;
         if (!text_input) { return; }
 
@@ -798,11 +828,8 @@ export class PopupMenu {
         value = rules_str + value;
 
         const form = document.querySelector('.header-search') as HTMLFormElement;
-        console.log(form);
         const input = document.getElementById('header-search-field') as HTMLInputElement;
-        console.log(input);
         input.value = value;
-        console.log(value);
         form.submit();
     }
 

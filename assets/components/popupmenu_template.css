@@ -601,10 +601,12 @@
     background-color: #2b253a;
 
     width: 100%;
+    cursor: move;
 }
 
 #ssa-footer-positioner>span {
     display: flex;
     text-align: center;
     line-height: 1;
+    user-select: none;
 }
