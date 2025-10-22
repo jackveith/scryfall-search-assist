@@ -1,7 +1,7 @@
 import api from '../utils/api';
 
 import type { DMMessageType, DMResponse, DMRequest } from '../types/ssa_types'
-import { constructStyleElement, genId, sendMessage } from '../utils/utils';
+import { constructStyleElement, genId, sendMessage, getDeepActiveElement } from '../utils/utils';
 
 import dm from '../components/datamanager';
 import popupmenu, { type PopupmenuState } from '../components/popupmenu';
@@ -17,6 +17,11 @@ function attachWindowEvents() {
     //keyboard shortcuts
     window.addEventListener('keydown', (e) => {
         //SHIFT-F shortcut
+
+        if (getDeepActiveElement() instanceof HTMLInputElement && !(e.key === 'Escape')) {
+            return;
+        }
+
         if (e.shiftKey && e.key === 'F') {
             e.preventDefault();
             if (!popupmenu.getIsVisible()) {
@@ -101,22 +106,22 @@ async function testDBManager() {
 
 
     await dm.set('userPinned', [
-        { name: 'First', query: 'ci<=bg mv=3', tags: ['t1', 't2'] },
-        { name: 'Second', query: 'ci<=temur t:creature legal:edh Fierce Emp', tags: ['t3', 't4'] },
-        { name: 'Third', query: 'ci=temur t:legend t:creature', tags: ['t3', 't4'] },
+        { id: genId('pin_'), name: 'First', query: 'ci<=bg mv=3', tags: ['t1', 't2'] },
+        { id: genId('pin_'), name: 'Second', query: 'ci<=temur t:creature legal:edh Fierce Emp', tags: ['t3', 't4'] },
+        { id: genId('pin_'), name: 'Third', query: 'ci=temur t:legend t:creature', tags: ['t3', 't4'] },
     ]);
     await dm.set('userRules', [
-        { id: genId(), name: 'Golgari', query: 'ci<=bg', tags: ['t1', 't2'] },
-        { id: genId(), name: 'Temur', query: 'ci<=temur', tags: ['t3', 't4'] },
-        { id: genId(), name: 'Cheap', query: 'mv<=3', tags: ['t3', 't4'] },
-        { id: genId(), name: 'EDH', query: 'legal:edh', tags: ['t1', 't2'] },
-        { id: genId(), name: 'Historic', query: 'is:historic', tags: ['t3', 't4'] },
-        { id: genId(), name: 'Mentions treasures', query: 'fo:treasure', tags: ['t3', 't4'] },
+        { id: genId('rul_'), name: 'Golgari', query: 'ci<=bg', tags: ['t1', 't2'] },
+        { id: genId('rul_'), name: 'Temur', query: 'ci<=temur', tags: ['t3', 't4'] },
+        { id: genId('rul_'), name: 'Cheap', query: 'mv<=3', tags: ['t3', 't4'] },
+        { id: genId('rul_'), name: 'EDH', query: 'legal:edh', tags: ['t1', 't2'] },
+        { id: genId('rul_'), name: 'Historic', query: 'is:historic', tags: ['t3', 't4'] },
+        { id: genId('rul_'), name: 'Mentions treasures', query: 'fo:treasure', tags: ['t3', 't4'] },
     ]);
     await dm.set('userRecent', [
-        { name: 'First', query: 'ci<=bg mv=3', tags: ['t1', 't2'] },
-        { name: 'Second', query: 'ci<=temur t:creature legal:edh Fierce Emp', tags: ['t3', 't4'] },
-        { name: 'Third', query: 'ci=temur t:legend t:creature', tags: ['t3', 't4'] },
+        { id: genId('rec_'), name: 'First', query: 'ci<=bg mv=3', tags: ['t1', 't2'] },
+        { id: genId('rec_'), name: 'Second', query: 'ci<=temur t:creature legal:edh Fierce Emp', tags: ['t3', 't4'] },
+        { id: genId('rec_'), name: 'Third', query: 'ci=temur t:legend t:creature', tags: ['t3', 't4'] },
     ]);
 
     await dm.set('testInitCompleted', true);
