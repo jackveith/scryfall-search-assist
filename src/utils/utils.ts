@@ -29,10 +29,17 @@ export function sendMessage<T = any>(request: DMRequest): Promise<DMResponse<T>>
         try {
             if (!api) {
                 reject(new Error('No runtime messaging API.'))
-            } else if (api === browser) {
-                browser.runtime.sendMessage(request).then(cb).catch(reject);
-            } else if (api === chrome) {
-                chrome.runtime.sendMessage(request, cb);
+            } else {
+                const result = api.runtime.sendMessage(request);
+                //then is a fxn => Firefox
+                if (result && typeof result.then === 'function') {
+                    result.then(cb).catch(reject);
+
+                    //not Promise-based => Chrome
+                } else {
+                    chrome.runtime.sendMessage(request, cb);
+                }
+
             }
 
         } catch (e) {
