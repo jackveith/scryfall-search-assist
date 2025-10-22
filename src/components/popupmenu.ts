@@ -217,10 +217,9 @@ export class PopupMenu {
                 this.active_tab = i;
             }
         }
-
         if (active >= tab_data_enum.length) { return; }
-        await this.populateTabArea(tab_data_enum[active]!);
 
+        await this.populateTabArea(tab_data_enum[active]!);
         this.saveCurrentState();
     }
 
@@ -241,6 +240,25 @@ export class PopupMenu {
             }
         }
 
+        if (tab_data_key === 'userRules' || tab_data_key === 'userPinned') {
+            const create_button = document.createElement('div');
+            create_button.classList.add('ssa-popup-subtabarea-create');
+            const create_button_inner = document.createElement('div');
+            create_button_inner.classList.add('ssa-popup-subtabarea-create-inner');
+            const create_button_text = document.createElement('span');
+            create_button_text.classList.add('ssa-popup-subtabarea-create-text');
+            create_button_text.textContent = "+";
+
+            create_button_inner.addEventListener('click', async (e) => {
+                this.enterItemEditor('create', tab_data_enum[this.active_tab]!, create_button);
+
+            });
+
+            create_button_inner.appendChild(create_button_text);
+            create_button.appendChild(create_button_inner);
+            subtab_area?.prepend(create_button);
+        }
+
         const ghost_svg = await constructSVGElement('assets/icons/soul-icon.svg');
         ghost_svg.id = 'subtab-area-bottom-icon';
         ghost_svg.setAttributeNS(null, "width", "32px");
@@ -250,6 +268,62 @@ export class PopupMenu {
         ghost_svg.setAttributeNS(null, "transform", "scale(4, -4)");
         //ghost_svg.setAttributeNS(null, "transform", "translate(8, 12)");
         subtab_area?.appendChild(ghost_svg);
+    }
+
+    private enterItemEditor(mode: string, tab: string, container: HTMLElement) {
+
+        if (mode === 'create') {
+            container.replaceChildren();
+            const create_form = document.createElement('form');
+            create_form.classList.add('subtab-item-edit-form');
+            const create_input_title = document.createElement('input');
+            const create_input_query = document.createElement('input');
+            create_input_title.classList.add('subtab-item-edit-input-text');
+            create_input_query.classList.add('subtab-item-edit-input-text');
+            create_input_title.placeholder = 'Name...';
+            create_input_query.placeholder = 'Rule Text...';
+
+            //TODO: submit button: [->], cancel button: [X]
+            //[  inp1  ][  inp2  ][->][X]
+            create_form.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    haltEventPropogation(e);
+                    create_form.requestSubmit();
+                } else { haltEventPropogation(e); }
+            }, true);
+            create_form.addEventListener('keyup', haltEventPropogation, true);
+            create_form.addEventListener('keypress', haltEventPropogation, true);
+
+            create_form.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                if (create_input_title.value === "" || create_input_query.value === "") { return; }
+
+                const store = tab === 'userRules' ? 'userRules' : 'userPinned';
+                const id_prefix = store === 'userRules' ? 'rul_' : 'pin_';
+                const new_item_id = genId(id_prefix);
+                let tab_data = await dm.get(store);
+                if (!tab_data) {
+                    tab_data = [];
+                }
+                const new_item = {
+                    id: new_item_id,
+                    name: create_input_title.value,
+                    query: create_input_query.value,
+                    tags: []
+                }
+                tab_data.unshift(new_item);
+                await dm.set(store, tab_data);
+                this.populateTabArea(tab);
+            });
+
+            create_form.appendChild(create_input_title);
+            create_form.appendChild(create_input_query);
+            container.prepend(create_form);
+
+            create_input_title.focus();
+
+        }
+
     }
 
     public show(): void {
