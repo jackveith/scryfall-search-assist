@@ -116,29 +116,26 @@ export class SearchbarMenu {
         this.toolbar_container.prepend(menus_divider);
         this.toolbar_container.prepend(menu_pin);
 
-
     }
-
 }
 
 async function pinNativeSearchValue(refreshSubtabList: boolean = true) {
     const sb = document.getElementById('header-search-field') as HTMLInputElement;
     if (!sb?.value) { return; }
 
-    const pin_name = genId('p_');
+    const pin_id = genId('pin_');
     const pin_query = sb.value;
     const pin_tags: string[] = [];
-
-    console.log(sb.value);
 
     let db_get: Object[] | null = await dm.get('userPinned', { force: true }) ?? null;
     console.log(db_get);
     if (!db_get) {
         db_get = [];
     }
-    db_get.unshift({ name: pin_name, query: pin_query, tags: pin_tags });
-    await dm.set('userPinned', db_get);
 
+    const pin_name = `pin_${db_get.length + 1}`;
+    db_get.unshift({ id: pin_id, name: pin_name, query: pin_query, tags: pin_tags });
+    await dm.set('userPinned', db_get);
 
     if (refreshSubtabList) {
         popupmenu.changeTab(1);
