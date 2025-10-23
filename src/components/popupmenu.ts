@@ -532,7 +532,6 @@ export class PopupMenu {
         const popup_wrapper = this.overlay?.querySelector('#ssa-popupmenu-outer-container-div') as HTMLDivElement;
 
         if (popup_wrapper && ref) {
-            const rect = ref.getBoundingClientRect();
             popup_wrapper.style.position = 'absolute';
             popup_wrapper.style.left = `${(this.positionX)}px`;
             popup_wrapper.style.top = `${(this.positionY)}px`;

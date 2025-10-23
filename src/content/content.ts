@@ -38,7 +38,9 @@ function attachWindowEvents() {
             }
             popupmenu.updatePosition();
             popupmenu.focusSearchbar();
-            popupmenu.changeTab(2);
+            if (popupmenu.getActiveTab() != 2) {
+                popupmenu.changeTab(2);
+            }
         }
         //ESCAPE shortcut
         else if (e.key === 'Escape') {
