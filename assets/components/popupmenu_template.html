@@ -1,57 +1,55 @@
-<template id="ssa-injected-popupmenu-template">
-    <div id="ssa-popupmenu-wrapper">
-        <div id="ssa-popupmenu-outer-container-div" class="font-lato">
+<div id="ssa-popupmenu-wrapper">
+    <div id="ssa-popupmenu-outer-container-div" class="font-lato">
 
-            <!-- Search bar -->
-            <div id="ssa-popup-searchform-container">
-                <form id="ssa-popup-searchform" name="popup-searchform" method="get">
-                    <div id="popup-searchbar-container">
-                        <input type="text" id="popup-searchbar-input" name="popup-search-main" value=""
-                            placeholder="Search Assist..." autocomplete="off" autocapitalize="none" autocorrect="off"
-                            spellcheck="false" maxLength="2048">
-                    </div>
-                </form>
-            </div>
-
-            <!-- Rules, Pinned, Recents Selector -->
-            <div id="popup-subtab-selector-container">
-                <button class="popup-subtab-selector-btn" id="subtab-selector-rules-btn">
-                    Rules
-                </button>
-                <button class="popup-subtab-selector-btn" id="subtab-selector-pinned-btn">
-                    Pinned
-                </button>
-                <button class="popup-subtab-selector-btn" id="subtab-selector-recents-btn">
-                    Recents
-                </button>
-            </div>
-
-
-            <!-- Search/Filtering input for tab -->
-            <div id="ssa-popup-subtab-searchform-container">
-                <form id="ssa-popup-subtab-searchform" name="popup-subtab-searchform">
-                    <input type="text" name="popup-search-subtab" value="" placeholder="Filter" autocomplete="off"
-                        autocapitalize="none" autocorrect="off" spellcheck="false" maxLength="2048">
-                </form>
-            </div>
-
-            <!-- tab area (grid with outer flex-col, inner flex-rows with grid elements )-->
-            <div id="ssa-popup-subtabarea-container">
-                <div id="ssa-popup-subtabarea-grid-outer">
-
+        <!-- Search bar -->
+        <div id="ssa-popup-searchform-container">
+            <form id="ssa-popup-searchform" name="popup-searchform" method="get">
+                <div id="popup-searchbar-container">
+                    <input type="text" id="popup-searchbar-input" name="popup-search-main" value=""
+                        placeholder="Search Assist..." autocomplete="off" autocapitalize="none" autocorrect="off"
+                        spellcheck="false" maxLength="2048">
                 </div>
-            </div>
-
-            <!-- Footer with resize/reposition handles -->
-            <div id="ssa-popup-footer-container">
-                <div id="ssa-footer-resize-left" class="ssa-footer-resize"><span>/</span></div>
-
-                <div id="ssa-footer-positioner"><span>· · ·</span></div>
-
-                <div id="ssa-footer-resize-right" class="ssa-footer-resize"><span>\</span></div>
-            </div>
-
-
+            </form>
         </div>
+
+        <!-- Rules, Pinned, Recents Selector -->
+        <div id="popup-tab-selector-container">
+            <button class="popup-tab-selector-btn" id="tab-selector-rules-btn">
+                Rules
+            </button>
+            <button class="popup-tab-selector-btn" id="tab-selector-pinned-btn">
+                Pinned
+            </button>
+            <button class="popup-tab-selector-btn" id="tab-selector-recents-btn">
+                Recents
+            </button>
+        </div>
+
+
+        <!-- Search/Filtering input for tab -->
+        <div id="ssa-popup-tab-searchform-container">
+            <form id="ssa-popup-tab-searchform" name="popup-tab-searchform">
+                <input type="text" name="popup-search-tab" value="" placeholder="Filter" autocomplete="off"
+                    autocapitalize="none" autocorrect="off" spellcheck="false" maxLength="2048">
+            </form>
+        </div>
+
+        <!-- tab area (grid with outer flex-col, inner flex-rows with grid elements )-->
+        <div id="ssa-popup-tabarea-container">
+            <div id="popup-tabarea-grid-outer">
+
+            </div>
+        </div>
+
+        <!-- Footer with resize/reposition handles -->
+        <div id="ssa-popup-footer-container">
+            <div id="footer-resize-left" class="footer-resize"><span>/</span></div>
+
+            <div id="footer-positioner"><span>· · ·</span></div>
+
+            <div id="footer-resize-right" class="footer-resize"><span>\</span></div>
+        </div>
+
+
     </div>
-</template>
+</div>
