@@ -1,16 +1,18 @@
 
 import api from '../utils/api';
 import dm from './datamanager';
-import popupmenu from './popupmenu';
+import { PopupMenu } from './popupmenu';
 import { genId } from '../utils/utils';
 
 
 export class SearchbarMenu {
 
+    private popupmenu: PopupMenu;
     private menu: HTMLAnchorElement | null = null;
     private toolbar_container: HTMLDivElement | null = null;
 
-    constructor() {
+    constructor(pm: PopupMenu) {
+        this.popupmenu = pm;
 
     }
 
@@ -33,10 +35,10 @@ export class SearchbarMenu {
         //toggle popup visibility
         menu_link.addEventListener('click', (event) => {
             event.preventDefault();
-            popupmenu.toggleVisibility();
+            this.popupmenu.toggleVisibility();
 
-            if (popupmenu.getIsVisible()) {
-                popupmenu.updatePosition();
+            if (this.popupmenu.getIsVisible()) {
+                //popupmenu.updatePosition();
             }
         });
 
@@ -71,10 +73,12 @@ export class SearchbarMenu {
         const menu_pin = document.createElement('a');
         menu_pin.className = "header-link";
         menu_pin.style.setProperty('background-color', '#F77C34');
+        /*
         menu_pin.addEventListener('click', async (e) => {
             const refreshSubtabList = popupmenu.getActiveTab() === 1 ? true : false;
             await pinNativeSearchValue();
         })
+        */
         menu_pin.style.setProperty('padding-left', '2px');
         menu_pin.style.setProperty('padding-right', '2px');
 
@@ -138,11 +142,8 @@ async function pinNativeSearchValue(refreshSubtabList: boolean = true) {
     await dm.set('userPinned', db_get);
 
     if (refreshSubtabList) {
-        popupmenu.changeTab(1);
+        //popupmenu.changeTab(1);
     }
 }
-
-const sbm = new SearchbarMenu();
-export default sbm;
 
 
