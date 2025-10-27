@@ -1,144 +1,64 @@
+import type { PopupMenuState, DMMessageType, DMResponse, DMRequest } from '../types/ssa_types'
+import { constructStyleElement, genId, sendMessage, constructSVGElement, haltEventPropogation } from '../utils/utils';
 
-import popupmenu_template_html from '../../assets/components/popupmenu_template.html?raw';
-import popupmenu_template_css from '../../assets/components/popupmenu_template.css?inline';
-
-import type { DMMessageType, DMResponse, DMRequest } from '../types/ssa_types'
-import { constructStyleElement, genId, sendMessage, constructSVGElement } from '../utils/utils';
 
 import api from '../utils/api';
 import dm from './datamanager';
+import { BackgroundManager } from './backgroundmanager';
+import { PopupMenuUIManager } from './popupmenuUIManager';
+import { PopupMenuEventManager } from './popupmenuEventManager';
+import { PopupMenuStateManager } from './popupmenuStateManager';
 
-const tab_data_enum = ['userRules', 'userPinned', 'userRecent'];
-
-export interface PopupmenuState {
-    isVisible: boolean,
-    active_tab: number,
-    activeRules: { [id: string]: { name: string, query: string } };
-    positionX: number,
-    positionY: number,
-    width: number,
-    height: number
-
+const TAB_NAME_TO_ID_MAP: { [id: string]: string } = {
+    'userRules': 'tab-selector-rules-btn',
+    'userPinned': 'tab-selector-pinned-btn',
+    'userRecents': 'tab-selector-recents-btn'
 }
 
 export class PopupMenu {
 
-    private template: HTMLTemplateElement | null = null;
-    private overlay: HTMLDivElement | null = null;
-    private shadow: ShadowRoot | null = null;
-
-    private isVisible: boolean = false;
-    private active_tab: number = 1;
-    private activeRules: { [id: string]: { name: string, query: string } } = {};
-    private isResizing: boolean = false;
-    private isRepositioning: boolean = false;
-    private positionX = 512;
-    private positionY = 64;
-    private width = 420;
-    private height = 400;
-
-    private savedState: PopupmenuState | null = null;
+    private backgroundMgr: BackgroundManager;
+    private uiMgr: PopupMenuUIManager;
+    private stateMgr: PopupMenuStateManager;
+    private eventMgr: PopupMenuEventManager;
 
 
-    private static readonly default_state: PopupmenuState = {
-        isVisible: false,
-        active_tab: 1,
-        activeRules: {},
-        positionX: 512,
-        positionY: 64,
-        width: 420,
-        height: 400
-    };
+    private savedState: PopupMenuState | null = null;
 
-    constructor() {
-        this.ensureTemplate();
-        this.initShadowRoot();
+
+    constructor(bkgdmgr: BackgroundManager) {
+        this.backgroundMgr = bkgdmgr;
+        this.uiMgr = new PopupMenuUIManager(bkgdmgr);
+        this.stateMgr = new PopupMenuStateManager(bkgdmgr);
+        this.eventMgr = new PopupMenuEventManager(bkgdmgr, this.uiMgr, this.stateMgr);
+        console.log('PU constructed');
+
     }
 
-
-    public initState(partial_state?: Partial<PopupmenuState>) {
-        const temp_state = { ...PopupMenu.default_state, ...partial_state } as PopupmenuState;
-
-        this.isVisible = temp_state.isVisible;
-        this.active_tab = temp_state.active_tab;
-        this.activeRules = temp_state.activeRules;
-        this.positionX = temp_state.positionX;
-        this.positionY = temp_state.positionY;
-        this.width = temp_state.width;
-        this.height = temp_state.height;
-
-        if (this.isVisible) {
-            this.show();
-        }
-
-        this.saveCurrentState();
+    public init() {
+        this.backgroundMgr.init();
     }
 
+    //TODO: ensure that we actually do ensure template and shadow above
 
-    private createState(): PopupmenuState {
-        return {
-            isVisible: this.isVisible,
-            active_tab: this.active_tab,
-            activeRules: this.activeRules,
-            positionX: this.positionX,
-            positionY: this.positionY,
-            width: this.width,
-            height: this.height
-        }
+    public getIsVisible() {
+        return this.stateMgr.getIsVisible();
     }
 
-    private saveCurrentState() {
-        this.savedState = this.createState();
-        dm.set('popupSavedState', this.savedState);
+    public getActiveTab() {
+        return this.stateMgr.getActiveTab();
     }
 
-    //TODO: this isn't popupmenu behavior so move it somewhere else
-    //TODO: harden against tampering with the shadow root/DOM
-    private initShadowRoot() {
-
-        let shadow_entry = document.getElementById('ssa-shadow-entry') as HTMLDivElement;
-        if (!shadow_entry) {
-
-            shadow_entry = document.createElement('div');
-            shadow_entry.id = 'ssa-shadow-entry';
-            this.shadow = shadow_entry.attachShadow({ mode: 'open' });
-            //TODO: separate out style injections
-            const style_element = constructStyleElement(popupmenu_template_css);
-            this.shadow.appendChild(style_element);
-            document.body.appendChild(shadow_entry);
-        }
-        this.shadow = shadow_entry.shadowRoot!;
-    }
-
-    private ensureTemplate(): HTMLTemplateElement {
-        //make and insert popup template into DOM (invisible by default)
-        let template = document.getElementById('ssa-injected-popupmenu-template') as HTMLTemplateElement;
-        if (!template) {
-            const temp_container = document.createElement('div');
-            temp_container.innerHTML = `${popupmenu_template_html}`;
-            template = document.body.appendChild(temp_container.firstElementChild!) as HTMLTemplateElement;
-        }
-        this.template = template;
-        return template;
-    }
-
-
-    private ensureOverlay(): HTMLDivElement {
-
-        let ovr = document.getElementById('ssa-popupmenu-overlay') as HTMLDivElement | null;
-        if (!ovr || !(this.overlay === ovr)) {
-            ovr?.remove();
-            ovr = document.createElement('div');
-            ovr.id = 'ssa-popupmenu-overlay';
-            this.overlay = ovr;
-        }
-        return ovr as HTMLDivElement;
-    }
-
+    /* populatePopupShell (probably still has some stuff to replicate)
     private populatePopupShell(shell: HTMLDivElement) {
 
+        //create all uiObjects
+        //attach all events
+        //
+
         //suppress other key events in search form
-        //TODO: fix catching the form submit so we can do our own search w/ rules
+        //TODO:fix catching the form submit so we can do our own search w/ rules
+
         const main_search_form = shell.querySelector('#ssa-popup-searchform') as HTMLFormElement;
         if (main_search_form) {
             main_search_form.addEventListener('click', () => this.focusSearchbar());
@@ -220,84 +140,41 @@ export class PopupMenu {
 
         this.saveCurrentState();
     }
+    */
 
-    private reposition(e: MouseEvent, wrapper: HTMLDivElement, coords: { startX: number, startY: number, popupX: number, popupY: number }) {
 
-        if (!this.isRepositioning) { return; }
+    public async changeTab(toTab: string) {
 
-        const deltaX = e.clientX - coords.startX;
-        const deltaY = e.clientY - coords.startY;
-        this.positionX = coords.popupX + deltaX;
-        this.positionY = coords.popupY + deltaY;
+        await this.stateMgr.syncState();
+        if (!this.stateMgr.getIsVisible()) { return }
 
-        this.updatePosition();
+        //const fromTab = this.stateMgr.getActiveTab();
+        const ovr = this.uiMgr.getOverlay()!;
+        //const tabContainer = ovr.querySelector('.popup-tab-selector-container')!;
+
+        const uiExistsAndMutated = this.uiMgr.changeTabSelector(toTab);
+        if (!uiExistsAndMutated) { return }
+
+        //update state
+        this.stateMgr.setActiveTab(toTab);
+        await this.stateMgr.createUpdateTabareaDataItems();
+        this.stateMgr.saveState();
+        const stateNewTab = this.stateMgr.exportState();
+        //update ui
+        const tabarea = ovr.querySelector('#popup-tabarea-grid-outer') as HTMLDivElement;
+        this.uiMgr.replaceTabarea(tabarea, stateNewTab);
+        //TODO: reassign event listeners
+        this.eventMgr.attachTabareaEvents(this);
+
     }
 
-    private stopReposition(listener1: (e: MouseEvent) => void, listener2: (e: MouseEvent) => void) {
-        this.isRepositioning = false;
-        document.removeEventListener('mousemove', listener1 as EventListenerOrEventListenerObject);
-        document.removeEventListener('mouseup', listener2 as EventListenerOrEventListenerObject);
-        this.saveCurrentState();
-    }
-
-    //TODO: make this based on a string enum ['Rules', 'Pinned', 'Recents']
-    public async changeTab(active: number) {
-        //if (this.active_tab == active) { return; }
-        const tab_buttons = this.shadow?.querySelectorAll('.popup-subtab-selector-btn');
-        if (!tab_buttons) { return; }
-
-        //update button styles
-        for (let i = 0; i <= tab_buttons.length; i++) {
-            tab_buttons[i]?.classList.remove("popup-subtab-active-btn");
-            if (active == i) {
-                tab_buttons[i]?.classList.add("popup-subtab-active-btn");
-                this.active_tab = i;
-            }
-        }
-        if (active >= tab_data_enum.length) { return; }
-
-        await this.populateTabArea(tab_data_enum[active]!);
-        this.saveCurrentState();
-    }
-
+    /*populateTabArea (need to replicate SVG construction/attachment)
     private async populateTabArea(active: string) {
 
-        const tab_data_key = active ?? 'userPinned';
-        const tab_data = await dm.get(tab_data_key);
-        const subtab_area = this.shadow?.getElementById('ssa-popup-subtabarea-grid-outer') ?? null;
-        const most_recent_state = await dm.get('popupSavedState');
-        this.activeRules = most_recent_state.activeRules;
-        this.updateSearchbar();
-
-        //TODO: for Rules and UserPinned, add a button to create new entries
-
-        if (tab_data) {
-            subtab_area?.replaceChildren();
-
-            for (let i = 0; i < tab_data.length; i++) {
-                let new_item = this.createSubtabItem(active, tab_data[i]);
-                subtab_area?.appendChild(new_item);
-            }
-        }
-
-        if (tab_data_key === 'userRules' || tab_data_key === 'userPinned') {
-            const create_button = document.createElement('div');
-            create_button.classList.add('ssa-popup-subtabarea-create');
-            const create_button_inner = document.createElement('div');
-            create_button_inner.classList.add('ssa-popup-subtabarea-create-inner');
-            const create_button_text = document.createElement('span');
-            create_button_text.classList.add('ssa-popup-subtabarea-create-text');
-            create_button_text.textContent = "+";
-
-            create_button_inner.addEventListener('click', async (e) => {
-                this.enterItemEditor('create', tab_data_enum[this.active_tab]!, create_button);
-
-            });
-
-            create_button_inner.appendChild(create_button_text);
-            create_button.appendChild(create_button_inner);
-            subtab_area?.prepend(create_button);
-        }
+        //TODO: pretty sure this is just
+        //  uiMgr.fillarea(tab)
+        //  eventMgr.attachTabareaEvents(tab)
+        //
 
         const ghost_svg = await constructSVGElement('assets/icons/soul-icon.svg');
         ghost_svg.id = 'subtab-area-bottom-icon';
@@ -311,7 +188,9 @@ export class PopupMenu {
         //ghost_svg.setAttributeNS(null, "transform", "translate(8, 12)");
         subtab_area?.appendChild(ghost_svg);
     }
+    */
 
+    /*enterItemEditor (still has some listeners and HTML that needs replicating)
     private enterItemEditor(mode: string, tab: string, container: HTMLElement) {
 
         const create_form = document.createElement('form');
@@ -455,213 +334,61 @@ export class PopupMenu {
 
         create_input_title.focus();
     }
+    */
 
-    public show(): void {
-        if (!this.template) { return };
-        if (!this.shadow) { return };
 
-        //add overlay wrapper to shadow DOM
-        const wrapper_overlay = this.ensureOverlay();
-        this.shadow.appendChild(wrapper_overlay);
-        this.overlay = this.shadow.getElementById('ssa-popupmenu-overlay') as HTMLDivElement;
-
-        //POPUP generation
-        const clone = this.template.content.cloneNode(true) as DocumentFragment;
-        this.overlay.appendChild(clone);
-        const popup_shell = this.shadow.getElementById('ssa-popupmenu-wrapper') as HTMLDivElement;
-        this.populatePopupShell(popup_shell);
-        const popup = this.overlay.querySelector('#ssa-popupmenu-outer-container-div') as HTMLDivElement;
-        popup.style.position = 'absolute';
-        popup.style.left = `${this.positionX}px`;
-        popup.style.top = `${this.positionY}px`;
-        popup.style.width = `${this.width}px`;
-        popup.style.height = `${this.height}px`;
-
-        this.isVisible = true;
-        this.focusSearchbar();
-        this.saveCurrentState();
+    public async createAndShow() {
+        console.log('start CaS');
+        await this.stateMgr.syncState();
+        this.stateMgr.setIsVisible(true);
+        await this.stateMgr.createUpdateTabareaDataItems();
+        //helper to init with currentState and default template
+        this.initDefaultUI();
+        this.uiMgr.attachOverlay();
+        this.uiMgr.refreshPopupLocation(this.stateMgr.exportState());
+        //const uiObjects = uiMgr.getModules() - references to module containers (and what they contain?)
+        //eventMgr.attachEvents(uiObjects)
+        //TODO: implement this behavior as uiMgr holding a list of 
+        //  ui from top to bottom, then it can be passed here in order to
+        //  attach events depending on what type of module it is, e.g.
+        //      tabarea, repositionHandle, searchbar, etc.
+        await this.eventMgr.initPopupEvents(this);
     }
 
-    public hide(): void {
-        this.overlay?.remove();
-        this.overlay = null;
-        this.isVisible = false;
-        this.saveCurrentState();
+    public destroyAndHide() {
+        this.uiMgr.destroyOverlay();
+        this.stateMgr.setIsVisible(false);
     }
+
+    private initDefaultUI(template?: HTMLTemplateElement) {
+        const localTemplate: HTMLTemplateElement = template ?? this.backgroundMgr.getTemplate('mainPopupmenuTemplate')!;
+        const currentState: PopupMenuState = this.stateMgr.exportState();
+        //const tabareaItemInstances = this.stateMgr.getTabareaItems();
+        this.uiMgr.initUIFromTemplate(localTemplate, currentState);
+    }
+
 
     public toggleVisibility(): string {
-        if (this.overlay) {
-            this.hide();
+        if (this.stateMgr.getIsVisible()) {
+            this.destroyAndHide();
             return "hidden";
         } else {
-            this.show();
+            this.createAndShow();
             return "shown";
         }
     }
 
-    public getShadowRoot() {
-        return this.shadow;
-    }
-    public getIsVisible() {
-        return this.isVisible;
-    }
-    public getOverlay() {
-        return this.overlay;
-    }
-    public getActiveTab() {
-        return this.active_tab;
-    }
 
     public focusSearchbar() {
-        if (!this.isVisible) { return; }
-        if (!this.overlay) { return; }
-
-        const search_form = this.overlay.querySelector('#ssa-popup-searchform') as HTMLFormElement;
-        const search_input = search_form.querySelector('#popup-searchbar-input') as HTMLInputElement;
-        if (search_input) {
-            search_input.focus();
-        }
+        if (!this.stateMgr.getIsVisible()) { return; }
+        this.uiMgr.focusSearchbar();
     }
 
 
-    //TODO: always snaps to SearchbarMenu, needs to care about offset
-    //when resize/reposition are fleshed out
-    public updatePosition() {
-        if (!this.isVisible) { return; }
-        const ref = document.getElementById('ssa-main-container-link');
-        const popup_wrapper = this.overlay?.querySelector('#ssa-popupmenu-outer-container-div') as HTMLDivElement;
-
-        if (popup_wrapper && ref) {
-            popup_wrapper.style.position = 'absolute';
-            popup_wrapper.style.left = `${(this.positionX)}px`;
-            popup_wrapper.style.top = `${(this.positionY)}px`;
-        }
-    }
 
 
-    public resize(e: MouseEvent, wrapper: HTMLElement, coords: { startX: number, startY: number, startW: number, startH: number }, side: string) {
-
-        if (!this.isResizing) { return; }
-        const current_style = getComputedStyle(wrapper);
-        const minW = parseInt(current_style.minWidth);
-        const maxW = parseInt(current_style.maxWidth);
-        const minH = parseInt(current_style.minHeight);
-        const maxH = parseInt(current_style.maxHeight);
-
-        let newW = coords.startW;
-        let newH = coords.startH;
-        let newX = this.positionX;
-
-        const bounding_rect = wrapper.getBoundingClientRect();
-
-        if (side === "right") {
-            newW = coords.startW + (e.clientX - coords.startX);
-            newW = Math.min(Math.max(newW, minW), maxW);
-        } else if (side === "left") {
-            // When dragging left, width increases as e.clientX decreases
-            const deltaX = e.clientX - bounding_rect.left;
-            newW = bounding_rect.width - deltaX;
-            newW = Math.min(Math.max(newW, minW), maxW);
-            // Move X so that right side stays still
-            //TODO: if the resize ends up at minW or maxW,
-            //do math to ensure that the position is correct if the mouse
-            //moved farther than a few units (currently snaps strangely)
-            if (newW == maxW && bounding_rect.width == maxW) {
-                //dont change the position if resizing maxWidth popup
-            } else if (newW > minW) {
-                newX = this.positionX + deltaX;
-            } else {
-                const w_dif = bounding_rect.width - newW;
-                newX = this.positionX + w_dif;
-            }
-        }
-
-        // Handle vertical resize (if you ever add top/bottom)
-        newH = coords.startH + (e.clientY - coords.startY);
-        newH = Math.min(Math.max(newH, minH), maxH);
-
-        wrapper.style.width = `${newW}px`;
-        wrapper.style.height = `${newH}px`;
-        this.width = newW;
-        this.height = newH;
-
-        if (side === "left") {
-            this.positionX = newX;
-        }
-        this.updatePosition();
-
-        const subtab_area = wrapper.querySelector('#ssa-popup-subtabarea-grid-outer') as HTMLElement;
-        void subtab_area?.offsetHeight;
-    }
-
-    public stopResize(listener1: (e: MouseEvent) => void, listener2: (e: MouseEvent) => void) {
-        this.isResizing = false;
-        document.removeEventListener('mousemove', listener1 as EventListenerOrEventListenerObject);
-        document.removeEventListener('mouseup', listener2 as EventListenerOrEventListenerObject);
-        this.saveCurrentState();
-    }
-
-    public updateSearchbar() {
-        if (!this.shadow) { return; }
-        const container = this.shadow.querySelector('#popup-searchbar-container') as HTMLDivElement;
-        const active_rules_len = Object.keys(this.activeRules).length;
-        //TODO: make this more robust than using indices, for when structure becomes more complex
-        if (active_rules_len == 0) {
-            if (container.children.length == 2) {
-                container.removeChild(container.children[0]!);
-            }
-            return;
-        }
-
-        if (container.children.length == 2) {
-            const rules_link = container.children[0] as HTMLLinkElement;
-            rules_link.textContent = `${active_rules_len}`;
-        } else {
-            const rules_link = document.createElement('a');
-            rules_link.id = 'searchbar-rules-link';
-            rules_link.textContent = `${active_rules_len}`;
-            rules_link.addEventListener('click', (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                this.changeTab(0);
-            });
-            container.prepend(rules_link);
-        }
-    }
-
+    /* createSubtabItem (still has some eventListeners i need to replicate)
     private createSubtabItem(type: string, item_data: { id: string, name: string, query: string, tags: string[] }) {
-        const item = document.createElement('div');
-        item.classList.add('ssa-popup-subtabarea-item');
-        item.dataset.ssaItemId = item_data.id;
-        //const top_row = document.createElement('div');
-        //const bot_row = document.createElement('div');
-        //top_row.classList.add('ssa-popup-sta-item-toprow');
-        //bot_row.classList.add('ssa-popup-sta-item-botrow');
-
-        const title_span = document.createElement('span');
-        title_span.classList.add('ssa-sta-item-title');
-        title_span.innerHTML = item_data.name;
-        const query_span = document.createElement('span');
-        query_span.classList.add('ssa-sta-item-query');
-        query_span.innerHTML = item_data.query;
-
-        /*
-        const tags_span = document.createElement('span');
-        tags_span.classList.add('ssa-sta-item-tags');
-        if (item_data.tags.length > 0) {
-            tags_span.innerHTML += item_data.tags[0];
-            for (let i = 1; i < item_data.tags.length; i++) {
-                tags_span.innerHTML += " · " + item_data.tags[i];
-            }
-        } else {
-            tags_span.innerHTML = "untagged";
-        }
-        */
-
-        item.appendChild(title_span);
-        item.appendChild(query_span);
-        //item.appendChild(tags_span);
-
         //OPTIONS BUTTONS
         const options_button = document.createElement('a');
         options_button.textContent = "⚙︎";
@@ -728,7 +455,6 @@ export class PopupMenu {
             edit_button.addEventListener('click', (ev) => {
                 ev.preventDefault();
                 ev.stopPropagation();
-
                 this.enterItemEditor('edit', type, item);
             })
 
@@ -803,45 +529,26 @@ export class PopupMenu {
         return item;
     }
 
-    //toggles given rule in the activeRule list; returns true on append, false on remove
-    private toggleActiveRule(d: { id: string, name: string, query: string }): boolean {
-        const active_rules_len = Object.keys(this.activeRules).length;
-        if (active_rules_len > 0 && d.id in this.activeRules) {
-            //remove rule
-            delete this.activeRules[d.id];
-            this.saveCurrentState();
-            return false;
+    */
+
+
+    public searchformSubmit() {
+
+        const searchInput = this.uiMgr.getOverlay()?.querySelector('#popup-searchbar-input') ?? null;
+        const popupTextInput = !searchInput ? "" : (searchInput as HTMLInputElement).value;
+
+        let value = `${popupTextInput}`;
+        let rulesStr = '';
+        for (let [ruleId, ruleData] of Object.entries(this.stateMgr.getActiveRules())) {
+            rulesStr += `${ruleData.query} `;
         }
-        //insert rule
-        this.activeRules[d.id] = { name: d.name, query: d.query };
-        this.saveCurrentState();
-        return true;
-    }
+        value = rulesStr + value;
 
-    private searchformSubmit() {
-        const text_input = this.shadow?.querySelector('#popup-searchbar-input') as HTMLInputElement;
-        if (!text_input) { return; }
-
-        let value = `${text_input.value} `;
-        let rules_str = '';
-        for (let [rule_id, rule_data] of Object.entries(this.activeRules)) {
-            rules_str += `${rule_data.query} `;
-        }
-        value = rules_str + value;
-
-        const form = document.querySelector('.header-search') as HTMLFormElement;
-        const input = document.getElementById('header-search-field') as HTMLInputElement;
-        input.value = value;
-        form.submit();
+        const sfForm = document.querySelector('.header-search') as HTMLFormElement;
+        const sfInput = document.getElementById('header-search-field') as HTMLInputElement;
+        sfInput.value = value;
+        sfForm.submit();
     }
 
 }
 
-
-const haltEventPropogation = (e: Event) => {
-    e.stopPropagation();
-    e.stopImmediatePropagation();
-}
-
-const pm = new PopupMenu();
-export default pm;
