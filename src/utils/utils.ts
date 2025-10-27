@@ -70,3 +70,25 @@ export function getDeepActiveElement() {
 
     return active;
 }
+
+
+export const haltEventPropogation = (e: Event) => {
+    e.stopPropagation();
+    e.stopImmediatePropagation();
+}
+
+
+export function createCreateButton() {
+    const createButton = document.createElement('div');
+    createButton.classList.add('popup-tabarea-create');
+    const createButtonInner = document.createElement('div');
+    createButtonInner.classList.add('popup-tabarea-create-inner');
+    const createButtonText = document.createElement('span');
+    createButtonText.classList.add('popup-tabarea-create-text');
+    createButtonText.textContent = "+";
+
+    createButtonInner.appendChild(createButtonText);
+    createButton.appendChild(createButtonInner);
+
+    return createButton;
+}
