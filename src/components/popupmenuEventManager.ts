@@ -31,7 +31,7 @@ export class PopupMenuEventManager {
     public attachSearchFormEvents(popupObject: PopupMenu) {
         const form = this.uiMgr.getOverlay()?.querySelector('#ssa-popup-searchform') ?? null;
         if (!form) { return; }
-
+        //SEARCHFORM key blockers/submit
         form.addEventListener('click', () => {
             this.uiMgr.focusSearchbar();
         });
@@ -48,8 +48,7 @@ export class PopupMenuEventManager {
             haltEventPropogation(e);
             popupObject.searchformSubmit();
         }, true);
-
-        //attach RuleButton listener if RuleButton exists
+        //attach RuleButton listener (changeTabAndFilter('userRules')) if RuleButton exists
         const rulesButton = this.uiMgr.getOverlay()?.querySelector('#searchbar-rules-link');
         if (rulesButton) {
             this.attachRulesButtonEvents(popupObject);
@@ -65,6 +64,7 @@ export class PopupMenuEventManager {
         const tabNames = ['userRules', 'userPinned', 'userRecents'];
         for (let i = 0; i <= tabButtons.length; i++) {
             if (!tabNames[i]) { return }
+
             tabButtons[i]?.addEventListener('click', async () => {
                 await popupObject.changeTab(tabNames[i]!);
             });
@@ -72,21 +72,21 @@ export class PopupMenuEventManager {
     }
 
     public async attachTabareaEvents(popupObject: PopupMenu) {
-
         if (!this.stateMgr.getIsVisible()) { return }
 
         const actTab = this.stateMgr.getActiveTab();
         const tabarea = this.uiMgr.getOverlay()!.querySelector('#popup-tabarea-grid-outer') as HTMLDivElement;
         let tabItemListeners: { type: string, listener: (ev: Event) => any }[] = [];
-
+        //define listeners for each item, by activeTab
         if (actTab === 'userRules') {
             const ruleClick = (ev: Event) => {
                 const ruleId = (ev.currentTarget as HTMLElement).dataset.ssaItemId ?? null;
                 if (!ruleId) { return; }
 
-                const didAddRule = this.stateMgr.toggleActiveRule(ruleId);
+                //toggle rule in state and UI
+                this.stateMgr.toggleActiveRule(ruleId);
                 this.uiMgr.toggleItemActiveRule(ev.currentTarget as HTMLDivElement);
-
+                //refresh/update rulesButton
                 const actives = this.stateMgr.getActiveRules();
                 const numActiveRules = Object.keys(actives).length;
                 const wasCreated = this.uiMgr.createUpdateRulesButton(numActiveRules);
@@ -96,6 +96,7 @@ export class PopupMenuEventManager {
             }
             tabItemListeners.push({ type: 'click', listener: ruleClick });
         }
+        //TODO: double click fill-and-go for userPinned, userRecents
 
         //attach item click listener(s) and options button listeners
         for (let tabItem of tabarea.children) {
@@ -106,20 +107,18 @@ export class PopupMenuEventManager {
             }
             await this.attachItemOptionsListeners(tabItem as HTMLDivElement, actTab);
         }
-        //create button listener
+        //try attach create button listener
         const createButton = tabarea.querySelector('.popup-tabarea-create');
         if (createButton) {
             this.attachCreateButtonListener(createButton as HTMLDivElement, actTab);
         }
-
-
-
     }
 
     public async attachItemOptionsListeners(item: HTMLDivElement, actTab: string) {
         for (let c of item.children) {
             const classes = c.classList;
 
+            //OPTION
             if (classes.contains('tabarea-item-edit-options')) {
                 c.addEventListener('click', async (e) => {
                     haltEventPropogation(e);
@@ -127,8 +126,8 @@ export class PopupMenuEventManager {
                     this.uiMgr.replaceOptionsButtons(item, actTab, "expand");
                     await this.attachItemOptionsListeners(item, actTab);
                 });
-
             }
+            //DELETE
             else if (classes.contains('tabarea-item-edit-delbtn')) {
                 c.addEventListener('click', async (e) => {
                     haltEventPropogation(e);
@@ -145,7 +144,7 @@ export class PopupMenuEventManager {
                     }
                 });
             }
-
+            //EDIT
             else if (classes.contains('tabarea-item-edit-editbtn')) {
                 c.addEventListener('click', (e) => {
                     haltEventPropogation(e);
@@ -156,20 +155,21 @@ export class PopupMenuEventManager {
                     titleInput.focus();
                 });
             }
-
+            //FILL
             else if (classes.contains('tabarea-item-edit-fillbtn')) {
                 c.addEventListener('click', (e) => {
                     haltEventPropogation(e);
 
                     const searchform = this.uiMgr.getOverlay()!.querySelector('#popup-searchbar-input') as HTMLInputElement;
                     const querySpan = item.querySelector('.popup-tabarea-item-query');
-                    const q = querySpan?.textContent;
-                    searchform.value = `${searchform.value} ${q} `;
+                    const itemQuery = querySpan?.textContent;
+                    //set search value, focus, then sim click on options contract button
+                    searchform.value = `${searchform.value} ${itemQuery} `;
                     this.uiMgr.focusSearchbar();
                     (item.querySelector('.tabarea-item-edit-contractbtn') as HTMLLinkElement).click();
                 });
             }
-
+            //CONTRACT
             else if (classes.contains('tabarea-item-edit-contractbtn')) {
                 c.addEventListener('click', async (e) => {
                     haltEventPropogation(e);
