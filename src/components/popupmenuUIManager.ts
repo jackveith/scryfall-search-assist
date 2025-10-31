@@ -4,6 +4,7 @@ import { TabareaDataItem } from "../types/ssa_types";
 
 import dm from './datamanager';
 import { createCreateButton } from "../utils/utils";
+import type { PopupMenuStateManager } from "./popupmenuStateManager";
 
 const TAB_NAME_TO_ID_MAP: { [id: string]: string } = {
     'userRules': 'tab-selector-rules-btn',
@@ -14,6 +15,7 @@ const TAB_NAME_TO_ID_MAP: { [id: string]: string } = {
 export class PopupMenuUIManager {
 
     private backgroundMgr: BackgroundManager;
+    private stateMgr: PopupMenuStateManager;
 
     private overlay: HTMLDivElement | null = null;
 
@@ -21,10 +23,9 @@ export class PopupMenuUIManager {
     private isRepositioning = false;
     //private moduleHandles: { [id: string]: HTMLElement } = {};
 
-
-
-    constructor(bkgd: BackgroundManager) {
+    constructor(bkgd: BackgroundManager, st: PopupMenuStateManager) {
         this.backgroundMgr = bkgd;
+        this.stateMgr = st;
     }
 
     //called after DOMContentLoaded
@@ -73,6 +74,10 @@ export class PopupMenuUIManager {
 
     public setIsRepositioning(val: boolean) {
         this.isRepositioning = val;
+    }
+
+    public async syncAndGetState() {
+        return await this.stateMgr.syncAndReturnState();
     }
 
     //create and fill out all UI components, dont attach overlay to
@@ -126,15 +131,15 @@ export class PopupMenuUIManager {
 
     public createAllTabareaItems(state: PopupMenuState) {
         const els: HTMLDivElement[] = [];
-        const allItems = state.tabareaItems;
+        const allItems = this.stateMgr.getTabareaItems();
 
         for (let dataItem of allItems) {
-            dataItem.elementRef = this.createTabareaItemReference(dataItem.data, state);
+            const tabElement = this.createTabareaItemReference(dataItem.data);
             if (dataItem.id in state.activeRules) {
                 dataItem.isActive = true;
-                dataItem.elementRef.classList.add('popup-item-active-rule');
+                tabElement.classList.add('popup-item-active-rule');
             }
-            els.push(dataItem.elementRef);
+            els.push(tabElement);
         }
         return els;
     }
@@ -156,7 +161,7 @@ export class PopupMenuUIManager {
         }
     }
 
-    public createTabareaItemReference(itemData: NamedQuery, state: PopupMenuState) {
+    public createTabareaItemReference(itemData: NamedQuery) {
 
         const item = this.backgroundMgr.getTemplateContent('tabareaItem') as HTMLDivElement;
         item.dataset.ssaItemId = itemData.id;

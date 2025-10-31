@@ -18,8 +18,8 @@ const TAB_NAME_TO_ID_MAP: { [id: string]: string } = {
 export class PopupMenu {
 
     private backgroundMgr: BackgroundManager;
-    private uiMgr: PopupMenuUIManager;
     private stateMgr: PopupMenuStateManager;
+    private uiMgr: PopupMenuUIManager;
     private eventMgr: PopupMenuEventManager;
 
 
@@ -28,8 +28,8 @@ export class PopupMenu {
 
     constructor(bkgdmgr: BackgroundManager) {
         this.backgroundMgr = bkgdmgr;
-        this.uiMgr = new PopupMenuUIManager(bkgdmgr);
         this.stateMgr = new PopupMenuStateManager(bkgdmgr);
+        this.uiMgr = new PopupMenuUIManager(bkgdmgr, this.stateMgr);
         this.eventMgr = new PopupMenuEventManager(bkgdmgr, this.uiMgr, this.stateMgr);
         console.log('PU constructed');
 

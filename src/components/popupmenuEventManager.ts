@@ -95,6 +95,17 @@ export class PopupMenuEventManager {
                 }
             }
             tabItemListeners.push({ type: 'click', listener: ruleClick });
+        } else if (actTab === 'userPinned' || actTab === 'userRecents') {
+            const pinnedRecentsFillDblClick = (e: Event) => {
+
+                const form = document.querySelector('.header-search') as HTMLFormElement;
+                const input = document.getElementById('header-search-field') as HTMLInputElement;
+                const id = (e.target! as HTMLElement).dataset.ssaItemId;
+                const itemData = this.stateMgr.getTabareaItems().find(ti => ti.id === id);
+                input.value = itemData!.data.query;
+                form.submit();
+            };
+            tabItemListeners.push({ type: 'dblckick', listener: pinnedRecentsFillDblClick });
         }
         //TODO: double click fill-and-go for userPinned, userRecents
 
@@ -220,8 +231,7 @@ export class PopupMenuEventManager {
 
             if (mode === 'create') {
                 const newDataItem = await this.stateMgr.createNewTabareaItem(titleValue, queryValue, actTab);
-                const tabareaItemRef = this.uiMgr.createTabareaItemReference(newDataItem.data, this.stateMgr.exportState());
-                newDataItem.elementRef = tabareaItemRef;
+                const tabareaItemRef = this.uiMgr.createTabareaItemReference(newDataItem.data);
                 item.insertAdjacentElement('afterend', tabareaItemRef);
 
                 this.uiMgr.replaceCreateButton(item as HTMLDivElement);
@@ -230,7 +240,7 @@ export class PopupMenuEventManager {
             } else if (mode === 'edit') {
                 const itemId = item.dataset.ssaItemId!;
                 const dataItem = await this.stateMgr.mutateTabareaItem(itemId, titleValue, queryValue, undefined, false);
-                const tabareaItem = this.uiMgr.createTabareaItemReference(dataItem.data, this.stateMgr.exportState());
+                const tabareaItem = this.uiMgr.createTabareaItemReference(dataItem.data);
 
                 item.innerHTML = tabareaItem.innerHTML;
                 this.attachItemOptionsListeners(item as HTMLDivElement, actTab);
@@ -253,7 +263,7 @@ export class PopupMenuEventManager {
                 const tabItems = this.stateMgr.getTabareaItems();
                 const itemId = item.dataset.ssaItemId!;
                 const dataItem = tabItems.find(i => i.id === itemId)!;
-                const tabareaItem = this.uiMgr.createTabareaItemReference(dataItem.data, this.stateMgr.exportState());
+                const tabareaItem = this.uiMgr.createTabareaItemReference(dataItem.data);
                 item.innerHTML = tabareaItem.innerHTML;
                 this.attachItemOptionsListeners(item as HTMLDivElement, actTab);
             }

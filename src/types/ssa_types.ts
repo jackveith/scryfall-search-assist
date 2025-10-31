@@ -48,14 +48,21 @@ export interface PopupMutatorObject {
 //each item in the tabarea
 export class TabareaDataItem {
     public id: string;
-    public elementRef: HTMLDivElement;
     public data: NamedQuery;
     public isActive = false;
 
-    constructor(data: NamedQuery, ref?: HTMLDivElement, isActive = false) {
+    constructor(data: NamedQuery, isActive = false) {
         this.id = data.id;
-        this.elementRef = ref ?? document.createElement('div');
         this.data = data;
         this.isActive = isActive;
+    }
+}
+
+export class DatabaseNotInitializedError extends Error {
+    constructor(message = "Database is not initialized") {
+        super(message);
+        this.name = "DatabaseNotInitializedError";
+        // Important: restore prototype chain when targeting ES5 or using Babel
+        Object.setPrototypeOf(this, new.target.prototype);
     }
 }

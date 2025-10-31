@@ -1,7 +1,7 @@
 
 import type { NamedQuery, PopupMenuState } from "../types/ssa_types";
 import type { BackgroundManager } from "./backgroundmanager";
-import { TabareaDataItem } from "../types/ssa_types";
+import { TabareaDataItem, DatabaseNotInitializedError } from "../types/ssa_types";
 
 import dm from './datamanager';
 import { genId } from "../utils/utils";
@@ -76,7 +76,14 @@ export class PopupMenuStateManager {
         }
     }
 
-    public async syncState() {
+    public async trySyncState() {
+        const sharedState: PopupMenuState | null = await dm.get('popupMenuState') ?? null;
+        if (!sharedState) { return; }
+        await this.syncState();
+
+    }
+
+    public async syncState(fillTabareaItems: boolean = false) {
         const sharedState: PopupMenuState | null = await dm.get('popupMenuState') ?? null;
         if (!sharedState) { return; }
         //TODO: reassign only the members indicated should be synced by user options
@@ -84,6 +91,9 @@ export class PopupMenuStateManager {
         this.activeTab = sharedState.activeTab;
         this.activeRules = sharedState.activeRules;
         this.position = sharedState.position;
+        if (!fillTabareaItems) { return }
+
+
         //this.tabareaItems
         //  TabareaDataItem elementRef likely to be stale.
         //  recompute here? 
@@ -100,13 +110,17 @@ export class PopupMenuStateManager {
         return exp;
     }
 
-    public saveState() {
+    public async saveState() {
         const exp = this.exportState();
         const sv = {
             ...exp,
             tabareaItems: exp.tabareaItems.map(tItem => tItem.id)
         };
-        dm.set('popupMenuState', sv);
+        await dm.set('popupMenuState', sv);
+    }
+
+    public async syncAndReturnState() {
+        this.syncState();
     }
 
     public toggleActiveRule(ruleId: string): boolean {
@@ -150,19 +164,23 @@ export class PopupMenuStateManager {
         return true;
     }
 
-    public async createUpdateTabareaDataItems() {
-        console.log(`activeTab: ${this.activeTab}`);
-        const tabData: NamedQuery[] | null = await dm.get(this.activeTab) ?? null;
-        console.log(tabData);
+    public generateTabareaItems(tabData: NamedQuery[]) {
         const newItems: TabareaDataItem[] = [];
 
-        if (tabData) {
-            for (let i = 0; i < tabData.length; i++) {
-                const item = new TabareaDataItem(tabData[i]!);
-                newItems.push(item);
-            }
+        for (let i = 0; i < tabData.length; i++) {
+            const item = new TabareaDataItem(tabData[i]!);
+            newItems.push(item);
         }
         this.tabareaItems = newItems;
+
+    }
+
+    public async createUpdateTabareaDataItems() {
+        const tabData: NamedQuery[] | null = await dm.get(this.activeTab) ?? null;
+        if (!tabData) {
+            throw new DatabaseNotInitializedError(`${this.activeTab} tabs not initialized.`);
+        }
+        this.generateTabareaItems(tabData);
         this.saveState();
     }
 
